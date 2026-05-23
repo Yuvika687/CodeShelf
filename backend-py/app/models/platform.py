@@ -211,8 +211,12 @@ class EmailLog(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    email_type: Mapped[str] = mapped_column(String(40), default="daily_revision", index=True)
+    recipient: Mapped[str] = mapped_column(String(255), default="")
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
-    body: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, default="")
+    card_ids: Mapped[str] = mapped_column(Text, default="")
+    provider_message_id: Mapped[str] = mapped_column(String(120), default="")
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     status: Mapped[str] = mapped_column(String(30), default="printed")
     error_message: Mapped[str] = mapped_column(Text, default="")

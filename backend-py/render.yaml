@@ -10,15 +10,50 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: DATABASE_URL_SYNC
-        sync: false
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: BACKEND_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
       - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: HF_API_KEY
+  - type: cron
+    name: codeshelf-daily-email
+    env: python
+    schedule: "0 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import os, httpx; httpx.post(os.environ['BACKEND_URL'].rstrip('/') + '/api/email/cron-daily', headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=60)"
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: codeshelf-weekly-digest
+    env: python
+    schedule: "0 3 * * 0"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import os, httpx; httpx.post(os.environ['BACKEND_URL'].rstrip('/') + '/api/email/cron-weekly', headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=60)"
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: codeshelf-streak-alert
+    env: python
+    schedule: "0 15 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import os, httpx; httpx.post(os.environ['BACKEND_URL'].rstrip('/') + '/api/email/cron-streak-alert', headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=60)"
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: CRON_SECRET
         sync: false

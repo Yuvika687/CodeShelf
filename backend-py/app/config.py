@@ -26,18 +26,23 @@ class Settings(BaseSettings):
 
     backend_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
     frontend_url: str = "http://127.0.0.1:5173"
+    backend_url: str = "http://127.0.0.1:8000"
     environment: str = "development"
     port: int = 8000
+    cron_secret: str = ""
 
     resend_api_key: str = ""
     resend_from_email: str = "CodeShelf <revision@codeshelf.local>"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash-lite"
     hf_api_key: str = ""
 
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.backend_cors_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.backend_cors_origins.split(",") if origin.strip()]
+        if self.frontend_url and self.frontend_url not in origins:
+            origins.append(self.frontend_url)
+        return origins
 
     @property
     def sync_database_url(self) -> str:
