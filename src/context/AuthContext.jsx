@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { signInWithPopup } from 'firebase/auth'
-import { authApi, setToken } from '../api/client.js'
+import { authApi, getToken, setToken } from '../api/client.js'
 import { debugError, debugLog, redact } from '../debug.js'
 import { firebaseAuth, googleProvider } from '../firebase.js'
 
@@ -11,6 +11,10 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!getToken()) {
+      setLoading(false)
+      return
+    }
     debugLog('auth bootstrap: /me start')
     authApi.me()
       .then((data) => {

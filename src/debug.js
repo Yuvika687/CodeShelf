@@ -1,4 +1,4 @@
-export const DEBUG_ENABLED = true
+export const DEBUG_ENABLED = import.meta.env.VITE_CODESHELF_DEBUG === 'true'
 
 export function debugLog(label, details = {}) {
   if (!DEBUG_ENABLED) return
