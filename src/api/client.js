@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
+const cleanApiBase = configuredApiBase.replace(/\/+$/, '')
+const API_BASE = cleanApiBase.endsWith('/api') ? cleanApiBase : `${cleanApiBase}/api`
 
 export function getToken() {
   return localStorage.getItem('codeshelf_token')
@@ -33,10 +35,7 @@ const q = (params = {}) => {
 }
 
 export const authApi = {
-  login: (payload) => api('/auth/login', { method: 'POST', body: payload }),
-  signup: (payload) => api('/auth/signup', { method: 'POST', body: payload }),
   google: (idToken) => api('/auth/google', { method: 'POST', body: { id_token: idToken } }),
-  resendVerification: (email) => api('/auth/resend-verification', { method: 'POST', body: { email } }),
   me: () => api('/auth/me'),
 }
 

@@ -19,16 +19,6 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     loading,
-    async login(payload) {
-      const data = await authApi.login(payload)
-      setToken(data.token)
-      setUser(data.user)
-      return data.user
-    },
-    async signup(payload) {
-      const data = await authApi.signup(payload)
-      return data
-    },
     async loginWithGoogle() {
       if (!firebaseAuth || !googleProvider) throw new Error('Google sign-in is not configured for this deployment.')
       const result = await signInWithPopup(firebaseAuth, googleProvider)
