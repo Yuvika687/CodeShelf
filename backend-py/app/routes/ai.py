@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import re
 
 import httpx
 from fastapi import APIRouter, Depends
+from gradio_client import Client
 from pydantic import BaseModel
 
-from app.config import get_settings
+from app.config import GEMINI_MODEL, get_settings
 from app.deps import get_current_user
 from app.models import User
 
@@ -28,13 +30,45 @@ def cheap_summary(text: str, max_sentences: int = 3) -> str:
     return " ".join(sentences[:max_sentences]) or clean[:320]
 
 
+def text_from_space_result(result) -> str:
+    if isinstance(result, str):
+        return result.strip()
+    if isinstance(result, dict):
+        for key in ("summary", "text", "output", "result"):
+            value = result.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return str(result)
+    if isinstance(result, (list, tuple)):
+        for item in result:
+            text = text_from_space_result(item)
+            if text:
+                return text
+    return ""
+
+
+def predict_hf_space_sync(text: str) -> str:
+    client = Client(settings.hf_space_id, hf_token=settings.hf_api_key or None)
+    result = client.predict(text[:6000], api_name=settings.hf_space_api_name)
+    return text_from_space_result(result)
+
+
+async def summarize_with_hf_space(text: str) -> str:
+    if not settings.hf_space_id or not text:
+        return ""
+    try:
+        return await asyncio.to_thread(predict_hf_space_sync, text)
+    except Exception:
+        return ""
+
+
 async def ask_gemini(prompt: str) -> str:
     if not settings.gemini_api_key:
         return ""
     try:
         async with httpx.AsyncClient(timeout=25) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
                 params={"key": settings.gemini_api_key},
                 json={"contents": [{"parts": [{"text": prompt}]}]},
             )
@@ -48,6 +82,9 @@ async def ask_gemini(prompt: str) -> str:
 
 @router.post("/summarize-note")
 async def summarize_note(body: TextIn, user: User = Depends(get_current_user)):
+    space_summary = await summarize_with_hf_space(body.text)
+    if space_summary:
+        return {"summary": space_summary, "provider": "huggingface-space"}
     if settings.hf_api_key and body.text:
         try:
             async with httpx.AsyncClient(timeout=20) as client:

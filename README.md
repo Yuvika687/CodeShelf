@@ -37,7 +37,6 @@ If `DATABASE_URL` is not set, the backend uses a local SQLite development databa
 
 ```env
 DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
-DATABASE_URL_SYNC=postgresql://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
 ```
 
 Then run:
@@ -67,7 +66,7 @@ Frontend on Vercel:
 Backend on Render:
 
 - Use `backend-py/render.yaml`
-- Set Neon `DATABASE_URL` and `DATABASE_URL_SYNC`
+- Set Neon `DATABASE_URL`
 - Set `JWT_SECRET`, `FRONTEND_URL`, and optional `RESEND_API_KEY`, `GEMINI_API_KEY`, `HF_API_KEY`
 - Render build runs Alembic migrations before starting FastAPI
 

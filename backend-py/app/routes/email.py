@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
+from app.config import GEMINI_MODEL, get_settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import DailyActivity, EmailLog, EmailPreference, Mistake, ReviewLog, RevisionCard, User
@@ -94,7 +94,7 @@ async def ask_gemini(prompt: str) -> str:
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{settings.gemini_model}:generateContent",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
                 params={"key": settings.gemini_api_key},
                 json={"contents": [{"parts": [{"text": prompt}]}]},
             )

@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
 class Settings(BaseSettings):
@@ -32,10 +33,11 @@ class Settings(BaseSettings):
     cron_secret: str = ""
 
     resend_api_key: str = ""
-    resend_from_email: str = "CodeShelf <revision@codeshelf.local>"
+    resend_from_email: str = "CodeShelf <onboarding@resend.dev>"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash-lite"
     hf_api_key: str = ""
+    hf_space_id: str = ""
+    hf_space_api_name: str = "/predict"
 
     @property
     def cors_origins(self) -> list[str]:
