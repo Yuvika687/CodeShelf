@@ -59,6 +59,12 @@ class Settings(BaseSettings):
         return list(dict.fromkeys(origins))
 
     @property
+    def cors_origin_regex(self) -> str:
+        if self.environment.lower() == "production":
+            return r"https://([a-z0-9-]+\.)*yogender1\.me|https://[a-z0-9-]+\.onrender\.com"
+        return r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+
+    @property
     def sync_database_url(self) -> str:
         if self.database_url_sync:
             return self.database_url_sync
