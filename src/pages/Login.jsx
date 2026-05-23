@@ -31,9 +31,28 @@ export default function Login() {
 }
 
 export function AuthShell({ title, subtitle, children }) {
+  const [motion, setMotion] = useState({ x: 50, y: 50 })
+  const handleMove = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    setMotion({
+      x: ((event.clientX - bounds.left) / bounds.width) * 100,
+      y: ((event.clientY - bounds.top) / bounds.height) * 100,
+    })
+  }
+
   return (
-    <main className="auth-page luxury-auth">
+    <main
+      className="auth-page luxury-auth"
+      onPointerMove={handleMove}
+      style={{ '--mx': `${motion.x}%`, '--my': `${motion.y}%` }}
+    >
       <section className="auth-story">
+        <div className="auth-ribbons" aria-hidden="true">
+          <span>recall.card(topic="DSA", due=today)</span>
+          <span>mistake.fix("edge case before interview")</span>
+          <span>walk_mode.explain(summary)</span>
+          <span>email.send(verified_google_user)</span>
+        </div>
         <Link to="/" className="auth-logo auth-logo-left"><span><Code2 size={20} /></span> CodeShelf</Link>
         <div className="auth-story-copy">
           <p className="eyebrow">Verified revision system</p>
@@ -47,6 +66,7 @@ export function AuthShell({ title, subtitle, children }) {
         </div>
       </section>
       <section className="auth-card premium-card">
+        <div className="auth-card-scan" aria-hidden="true" />
         <div className="auth-card-heading">
           <p className="eyebrow">CodeShelf</p>
           <h1>{title}</h1>

@@ -10,6 +10,15 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 GEMINI_MODEL = "gemini-2.5-flash-lite"
 
 
+def normalize_origin(value: str) -> list[str]:
+    origin = value.strip().rstrip("/")
+    if not origin:
+        return []
+    if origin.startswith(("http://", "https://")):
+        return [origin]
+    return [f"https://{origin}", f"http://{origin}"]
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(ROOT_DIR / ".env"),
@@ -43,10 +52,11 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        origins = [origin.strip() for origin in self.backend_cors_origins.split(",") if origin.strip()]
-        if self.frontend_url and self.frontend_url not in origins:
-            origins.append(self.frontend_url)
-        return origins
+        origins: list[str] = []
+        for origin in self.backend_cors_origins.split(","):
+            origins.extend(normalize_origin(origin))
+        origins.extend(normalize_origin(self.frontend_url))
+        return list(dict.fromkeys(origins))
 
     @property
     def sync_database_url(self) -> str:
