@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
       })
       .catch((error) => {
         debugError('auth bootstrap: /me failed', error)
+        setToken(null)
         setUser(null)
       })
       .finally(() => {
