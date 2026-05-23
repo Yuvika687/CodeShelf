@@ -4,6 +4,7 @@ import asyncio
 import sys
 from logging.config import fileConfig
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from alembic import context
 from sqlalchemy import pool
@@ -27,6 +28,20 @@ async_url = settings.database_url
 config.set_main_option("sqlalchemy.url", sync_url)
 
 
+def clean_asyncpg_url(url: str) -> tuple[str, bool]:
+    parsed = urlsplit(url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    wants_ssl = parsed.hostname and "neon.tech" in parsed.hostname
+    wants_ssl = bool(wants_ssl or query.get("sslmode") == "require" or query.get("ssl") == "require")
+
+    for key in ("sslmode", "ssl", "channel_binding"):
+        query.pop(key, None)
+
+    clean_query = urlencode(query)
+    clean_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, clean_query, parsed.fragment))
+    return clean_url, wants_ssl
+
+
 def run_migrations_offline() -> None:
     context.configure(url=sync_url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
@@ -40,10 +55,10 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    clean_url = async_url.replace("?sslmode=require", "").replace("&sslmode=require", "")
+    clean_url, wants_ssl = clean_asyncpg_url(async_url)
     config.set_main_option("sqlalchemy.url", clean_url)
     connect_args = {}
-    if clean_url.startswith("postgresql") and ("neon.tech" in async_url or "sslmode=require" in async_url):
+    if clean_url.startswith("postgresql") and wants_ssl:
         connect_args["ssl"] = "require"
     if clean_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
