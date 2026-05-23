@@ -58,7 +58,7 @@ export default function EmailSettings() {
       {!user?.email_verified ? (
         <section className="verify-banner">
           <ShieldCheck size={20} />
-          <div><strong>Verify email before reminders go live.</strong><span>Password accounts must confirm the inbox so notifications never go to fake emails.</span></div>
+          <div><strong>Google verification required.</strong><span>CodeShelf sends reminders only to the verified email returned by Google sign-in.</span></div>
         </section>
       ) : null}
       <div className="email-layout">
