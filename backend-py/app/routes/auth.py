@@ -6,9 +6,8 @@ from urllib.parse import urlencode
 
 import httpx
 import firebase_admin
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from firebase_admin import auth as firebase_auth, credentials
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,10 +21,6 @@ from app.routes.utils import ensure_email_preferences, user_out
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 settings = get_settings()
-
-
-class GoogleIn(BaseModel):
-    id_token: str
 
 
 def frontend_url(path: str, params: dict[str, str] | None = None) -> str:
@@ -103,10 +98,18 @@ def init_firebase_admin() -> None:
 
 
 @router.post("/google")
-async def google_login(body: GoogleIn, db: AsyncSession = Depends(get_db)):
+async def google_login(request: Request, db: AsyncSession = Depends(get_db)):
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("text/plain"):
+        id_token = (await request.body()).decode("utf-8").strip()
+    else:
+        body = await request.json()
+        id_token = str(body.get("id_token") or "").strip()
+    if not id_token:
+        raise HTTPException(status_code=400, detail="Missing Google ID token.")
     try:
         init_firebase_admin()
-        decoded = firebase_auth.verify_id_token(body.id_token)
+        decoded = firebase_auth.verify_id_token(id_token)
     except Exception:
         raise HTTPException(status_code=401, detail="Google sign-in could not be verified.")
     email = str(decoded.get("email") or "").lower()
