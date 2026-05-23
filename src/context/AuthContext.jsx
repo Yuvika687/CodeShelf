@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { signInWithPopup } from 'firebase/auth'
 import { authApi, setToken } from '../api/client.js'
+import { firebaseAuth, googleProvider } from '../firebase.js'
 
 const AuthContext = createContext(null)
 
@@ -25,6 +27,13 @@ export function AuthProvider({ children }) {
     },
     async signup(payload) {
       const data = await authApi.signup(payload)
+      return data
+    },
+    async loginWithGoogle() {
+      if (!firebaseAuth || !googleProvider) throw new Error('Google sign-in is not configured for this deployment.')
+      const result = await signInWithPopup(firebaseAuth, googleProvider)
+      const idToken = await result.user.getIdToken()
+      const data = await authApi.google(idToken)
       setToken(data.token)
       setUser(data.user)
       return data.user

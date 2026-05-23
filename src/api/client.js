@@ -35,6 +35,8 @@ const q = (params = {}) => {
 export const authApi = {
   login: (payload) => api('/auth/login', { method: 'POST', body: payload }),
   signup: (payload) => api('/auth/signup', { method: 'POST', body: payload }),
+  google: (idToken) => api('/auth/google', { method: 'POST', body: { id_token: idToken } }),
+  resendVerification: (email) => api('/auth/resend-verification', { method: 'POST', body: { email } }),
   me: () => api('/auth/me'),
 }
 

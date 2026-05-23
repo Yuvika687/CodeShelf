@@ -23,6 +23,8 @@ def user_out(user: User) -> dict[str, Any]:
         "id": user.id,
         "name": user.name,
         "email": user.email,
+        "email_verified": user.email_verified,
+        "auth_provider": user.auth_provider,
         "current_streak": user.current_streak,
         "longest_streak": user.longest_streak,
         "created_at": iso(user.created_at),

@@ -33,6 +33,10 @@ class EmailPreferencesIn(BaseModel):
     include_sql: bool = True
     include_devops: bool = True
     include_mistakes: bool = True
+    include_summary: bool = True
+    include_streak_alert: bool = True
+    reminder_style: str = "focused"
+    subject_style: str = "personal"
 
 
 def parse_time(value: str) -> time:
@@ -50,6 +54,10 @@ def prefs_out(prefs: EmailPreference) -> dict:
         "include_sql": prefs.include_sql,
         "include_devops": prefs.include_devops,
         "include_mistakes": prefs.include_mistakes,
+        "include_summary": prefs.include_summary,
+        "include_streak_alert": prefs.include_streak_alert,
+        "reminder_style": prefs.reminder_style,
+        "subject_style": prefs.subject_style,
     }
 
 
@@ -192,13 +200,13 @@ def streak_bar(days: int) -> str:
     return ("█" * filled) + ("░" * (14 - filled))
 
 
-async def personalized_intro(user: User, topics: list[str], due_count: int) -> str:
+async def personalized_intro(user: User, topics: list[str], due_count: int, style: str = "focused") -> str:
     fallback = (
         f"Hey {user.name}, your revision queue has {due_count} card"
         f"{'' if due_count == 1 else 's'} today. Focus on {', '.join(topics[:2])} and keep the streak alive."
     )
     prompt = (
-        "Write one warm, concise CodeShelf daily revision intro. "
+        f"Write one {style} CodeShelf daily revision intro. "
         "No markdown. Under 35 words. "
         f"User: {user.name}. Current streak: {user.current_streak}. Due cards: {due_count}. Weak topics: {', '.join(topics)}."
     )
@@ -207,6 +215,8 @@ async def personalized_intro(user: User, topics: list[str], due_count: int) -> s
 
 async def build_daily_email(db: AsyncSession, user: User) -> dict:
     prefs = await ensure_email_preferences(db, user)
+    if not user.email_verified:
+        return {}
     cards = await due_cards(db, user, max(3, prefs.daily_card_count))
     topics = await weak_topics(db, user)
     mistake = (await db.execute(select(Mistake).where(Mistake.user_id == user.id).limit(1))).scalar_one_or_none()
@@ -215,8 +225,12 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
     plan = [card.question for card in cards[:5]] or ["Add your first revision card", "Review one mistake", "Revise one coding pattern"]
     if mistake and len(plan) < 5:
         plan.append(f"Review mistake: {mistake.mistake_title}")
-    intro = await personalized_intro(user, topics, len(cards))
-    subject = f"{user.name}, today's CodeShelf revision is ready"
+    intro = await personalized_intro(user, topics, len(cards), prefs.reminder_style)
+    subject = (
+        f"{user.name}, protect your {user.current_streak}-day CodeShelf streak"
+        if prefs.subject_style == "streak"
+        else f"{user.name}, today's CodeShelf revision is ready"
+    )
     unsubscribe = action_url(
         "/api/email/unsubscribe",
         {"token": create_email_token({"sub": user.id, "type": "email_unsubscribe"}, hours=24 * 30)},
@@ -229,6 +243,7 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "cards": card_blocks,
         "plan": plan,
         "weak_topics": topics,
+        "include_summary": prefs.include_summary,
         "activity": activity,
         "streak_bar": streak_bar(user.current_streak or 0),
         "open_url": frontend_url("/revision/today", {"from": "email"}),
@@ -240,6 +255,8 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
 
 
 async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
+    if not user.email_verified:
+        return {}
     since = date.today() - timedelta(days=7)
     rows = (
         await db.execute(
@@ -272,6 +289,9 @@ async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
 
 
 async def build_streak_alert(db: AsyncSession, user: User) -> dict | None:
+    prefs = await ensure_email_preferences(db, user)
+    if not user.email_verified or not prefs.include_streak_alert:
+        return None
     activity = await get_or_create_today_activity(db, user)
     if activity.completed_today or activity.cards_reviewed > 0 or user.current_streak <= 0:
         return None
@@ -475,6 +495,8 @@ async def get_preferences(user: User = Depends(get_current_user), db: AsyncSessi
 
 @router.put("/preferences")
 async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if body.enabled and not user.email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before enabling reminders.")
     prefs = await ensure_email_preferences(db, user)
     prefs.enabled = body.enabled
     prefs.email_time = parse_time(body.email_time)
@@ -484,23 +506,33 @@ async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_
     prefs.include_sql = body.include_sql
     prefs.include_devops = body.include_devops
     prefs.include_mistakes = body.include_mistakes
+    prefs.include_summary = body.include_summary
+    prefs.include_streak_alert = body.include_streak_alert
+    prefs.reminder_style = body.reminder_style
+    prefs.subject_style = body.subject_style
     await db.flush()
     return {"preferences": prefs_out(prefs)}
 
 
 @router.post("/preview")
 async def preview_email(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before generating reminder previews.")
     payload = await build_daily_email(db, user)
     return {"subject": payload["subject"], "body": payload["text"], "html": payload["html"]}
 
 
 @router.post("/send-test")
 async def send_test(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before sending test reminders.")
     return await send_daily(user, db)
 
 
 @router.post("/send-daily")
 async def send_daily(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before sending reminders.")
     return await send_email(db, user, await build_daily_email(db, user))
 
 

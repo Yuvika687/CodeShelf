@@ -30,6 +30,8 @@ services:
         sync: false
       - key: HF_SPACE_API_NAME
         value: /predict
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
   - type: cron
     name: codeshelf-daily-email
     env: python
