@@ -1,28 +1,82 @@
+import { debugError, debugLog, redact, responseHeaders } from '../debug.js'
+
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
 const cleanApiBase = configuredApiBase.replace(/\/+$/, '')
 const API_BASE = cleanApiBase.endsWith('/api') ? cleanApiBase : `${cleanApiBase}/api`
+
+debugLog('api config', {
+  configuredApiBase,
+  normalizedApiBase: API_BASE,
+  appOrigin: window.location.origin,
+})
 
 export function getToken() {
   return localStorage.getItem('codeshelf_token')
 }
 
 export function setToken(token) {
-  if (token) localStorage.setItem('codeshelf_token', token)
-  else localStorage.removeItem('codeshelf_token')
+  if (token) {
+    debugLog('auth token stored', { tokenPreview: redact(token), length: token.length })
+    localStorage.setItem('codeshelf_token', token)
+  } else {
+    debugLog('auth token cleared')
+    localStorage.removeItem('codeshelf_token')
+  }
 }
 
 export async function api(path, options = {}) {
   const token = getToken()
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
   if (token) headers.Authorization = `Bearer ${token}`
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    body: options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body,
+  const url = `${API_BASE}${path}`
+  const method = options.method || 'GET'
+  const body = options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body
+  debugLog('api request', {
+    method,
+    path,
+    url,
+    hasJwt: Boolean(token),
+    headers: { ...headers, Authorization: token ? `Bearer ${redact(token)}` : undefined },
+    bodyPreview: body ? redact(body, 24) : '',
   })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.detail || data.error || 'Something went wrong.')
-  return data
+  try {
+    const startedAt = performance.now()
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      body,
+    })
+    const durationMs = Math.round(performance.now() - startedAt)
+    const rawText = await response.text()
+    let data = {}
+    try {
+      data = rawText ? JSON.parse(rawText) : {}
+    } catch (parseError) {
+      data = { raw: rawText }
+      debugError('api response json parse failed', parseError, { url, rawText })
+    }
+    debugLog('api response', {
+      method,
+      path,
+      url,
+      status: response.status,
+      ok: response.ok,
+      durationMs,
+      headers: responseHeaders(response),
+      data,
+    })
+    if (!response.ok) throw new Error(data.detail || data.error || rawText || 'Something went wrong.')
+    return data
+  } catch (error) {
+    debugError('api fetch failed', error, {
+      method,
+      path,
+      url,
+      appOrigin: window.location.origin,
+      probableCorsOrNetworkIssue: error instanceof TypeError,
+    })
+    throw error
+  }
 }
 
 const q = (params = {}) => {

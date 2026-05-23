@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { debugLog } from './debug.js'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAYzoiG5XGYQLcYhq4ixBRyF4_l0Gl-1yY',
@@ -28,6 +29,15 @@ export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null
 export const googleProvider = firebaseApp ? new GoogleAuthProvider() : null
 export const firestore = firebaseApp ? getFirestore(firebaseApp) : null
 export const firebaseStorage = firebaseApp ? getStorage(firebaseApp) : null
+
+debugLog('firebase init', {
+  hasFirebaseConfig,
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  appId: firebaseConfig.appId,
+  hasAuth: Boolean(firebaseAuth),
+  currentOrigin: window.location.origin,
+})
 
 export async function loadFirebaseAnalytics() {
   if (!firebaseApp || !firebaseConfig.measurementId) return null
