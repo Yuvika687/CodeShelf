@@ -4,35 +4,33 @@ export default function CursorGlow() {
   const dotRef = useRef(null)
   const ringRef = useRef(null)
   const pos = useRef({ x: -100, y: -100 })
-  const delayedPos = useRef({ x: -100, y: -100 })
-  const frameRef = useRef()
+  const smooth = useRef({ x: -100, y: -100 })
+  const raf = useRef()
 
   useEffect(() => {
-    const handleMove = (e) => {
+    const onMove = (e) => {
       pos.current = { x: e.clientX, y: e.clientY }
       if (dotRef.current) {
         dotRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`
       }
     }
-    window.addEventListener('pointermove', handleMove)
+    window.addEventListener('pointermove', onMove, { passive: true })
 
-    const updateRing = () => {
-      const dx = pos.current.x - delayedPos.current.x
-      const dy = pos.current.y - delayedPos.current.y
-      
-      delayedPos.current.x += dx * 0.15
-      delayedPos.current.y += dy * 0.15
-
+    const tick = () => {
+      const dx = pos.current.x - smooth.current.x
+      const dy = pos.current.y - smooth.current.y
+      smooth.current.x += dx * 0.12
+      smooth.current.y += dy * 0.12
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate3d(${delayedPos.current.x}px, ${delayedPos.current.y}px, 0)`
+        ringRef.current.style.transform = `translate3d(${smooth.current.x}px, ${smooth.current.y}px, 0)`
       }
-      frameRef.current = requestAnimationFrame(updateRing)
+      raf.current = requestAnimationFrame(tick)
     }
-    frameRef.current = requestAnimationFrame(updateRing)
+    raf.current = requestAnimationFrame(tick)
 
     return () => {
-      window.removeEventListener('pointermove', handleMove)
-      cancelAnimationFrame(frameRef.current)
+      window.removeEventListener('pointermove', onMove)
+      cancelAnimationFrame(raf.current)
     }
   }, [])
 
@@ -43,4 +41,3 @@ export default function CursorGlow() {
     </>
   )
 }
-
