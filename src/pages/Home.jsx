@@ -1,220 +1,149 @@
-import { AlertTriangle, ArrowRight, BookOpen, Brain, CalendarCheck, CheckCircle2, Flame, Plus, Route, ShieldAlert, Sparkles } from 'lucide-react'
+import { ArrowRight, BookOpen, Brain, CalendarCheck, CheckCircle2, Code2, Flame, Plus, Route, ShieldAlert, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import NebulaParticles from '../components/NebulaParticles.jsx'
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
 export default function Home() {
   const { user } = useAuth()
-  const [dashboard, setDashboard] = useState(null)
+  const [db, setDb] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    dashboardApi.get().then(setDashboard).catch((err) => setError(err.message))
-  }, [])
+  useEffect(() => { dashboardApi.get().then(setDb).catch(e => setError(e.message)) }, [])
 
-  const stats = dashboard?.stats || {}
-  const due = dashboard?.today?.due_cards || 0
-  const streak = dashboard?.streak?.current || 0
-  const cards = dashboard?.today?.cards || []
-  const notes = dashboard?.recent_notes || []
-  const mistakes = dashboard?.recent_mistakes || []
+  const s = db?.stats || {}
+  const due = db?.today?.due_cards || 0
+  const streak = db?.streak?.current || 0
+  const cards = db?.today?.cards || []
+  const notes = db?.recent_notes || []
+  const mistakes = db?.recent_mistakes || []
 
   return (
-    <div className="nebula-dashboard">
-      <NebulaParticles starCount={100} nebulaCount={4} />
+    <div className="cmd">
+      <NebulaParticles starCount={130} nebulaCount={5} />
+      <div className="cmd-scan" aria-hidden="true" />
 
-      {/* Hero */}
-      <section className="nd-hero">
-        <div className="nd-hero-copy">
-          <p className="eyebrow">Welcome back, {user?.name || 'Explorer'} 👋</p>
-          <h1>Learn once. Keep it forever.</h1>
-          <p>Turn DSA, SQL, DevOps commands, mistakes, and interview concepts into an active, long-term memory system.</p>
-          <div className="hero-actions">
-            <Link className="btn btn-primary nd-glow-btn clickable" to="/revision/today"><Brain size={16} /> Start Today's Revision <ArrowRight size={14} /></Link>
-            <Link className="btn btn-secondary clickable" to="/add-note"><Sparkles size={16} /> Log Learning</Link>
-          </div>
+      <header className="cmd-hdr">
+        <div>
+          <span className="cmd-tag">&gt; system.online</span>
+          <h1 className="cmd-h1">Welcome, <em>{user?.name || 'Explorer'}</em></h1>
         </div>
-        <BrainOrb />
-      </section>
+        <nav className="cmd-pills">
+          <Pill icon={CalendarCheck} v={due} l="DUE" c="var(--primary)" />
+          <Pill icon={Flame} v={streak} l="STREAK" c="var(--orange)" />
+          <Pill icon={BookOpen} v={s.notes||0} l="NOTES" c="var(--green)" />
+          <Pill icon={Route} v={s.problems||0} l="PROBLEMS" c="var(--blue)" />
+        </nav>
+      </header>
 
-      {error ? <p className="form-error">{error}</p> : null}
+      {error && <p className="form-error" style={{gridColumn:'1/-1'}}>{error}</p>}
 
-      {/* Stats */}
-      <div className="nd-stats">
-        <NdStat icon={CalendarCheck} label="Cards Due Today" value={due} color="var(--primary)" hint={due > 0 ? `↑ ${due} ready` : 'All clear'} />
-        <NdStat icon={Flame} label="Current Streak" value={streak} color="var(--orange)" hint={streak > 0 ? 'Keep it going! 🔥' : 'Start today'} unit=" days" />
-        <NdStat icon={BookOpen} label="Library Notes" value={stats.notes || 0} color="var(--green)" hint={stats.notes ? `↑ ${stats.notes} total` : 'Add first note'} />
-        <NdStat icon={Route} label="DSA Problems" value={stats.problems || 0} color="var(--blue)" hint={stats.problems ? `↑ ${stats.problems} solved` : 'Start solving'} />
-      </div>
-
-      {/* Bento */}
-      <div className="nd-bento">
-        {/* Queue */}
-        <section className="nd-panel nd-queue">
-          <div className="nd-panel-head"><h2>Today's Revision Queue <span className="nd-badge">{cards.length}</span></h2></div>
-          <div className="nd-list">
-            {cards.slice(0, 5).map((c) => (
-              <article className="nd-row" key={c.id}>
-                <div className="nd-row-dot" /><span>{c.question}</span>
-                <small className="topic-chip">{c.topic} • {c.difficulty}</small>
-              </article>
-            ))}
-            {!cards.length && <NdEmpty icon={Brain} text="Add notes to fill your queue" />}
-          </div>
-          <Link to="/revision/today" className="nd-link clickable">View Full Queue <ArrowRight size={14} /></Link>
-        </section>
-
-        {/* Weekly Progress */}
-        <section className="nd-panel nd-chart">
-          <div className="nd-panel-head"><h2>Weekly Progress</h2><span className="topic-chip">This Week</span></div>
-          <WeeklyChart total={stats.reviewed_this_week || due} reviewed={stats.reviewed_today || 0} />
-        </section>
-
-        {/* Weak Topics */}
-        <section className="nd-panel nd-weak">
-          <div className="nd-panel-head"><h2>Weak Topics</h2></div>
-          <div className="nd-weak-list">
-            {mistakes.length > 0 ? groupByTopic(mistakes).slice(0, 5).map(([topic, count, pct]) => (
-              <div className="nd-weak-row" key={topic}>
-                <span>{topic}</span>
-                <div className="nd-bar-track"><div className="nd-bar-fill" style={{ width: `${pct}%` }} /></div>
-                <small>{pct}%</small>
-              </div>
-            )) : <NdEmpty icon={ShieldAlert} text="No weak topics detected" />}
-          </div>
-        </section>
-
-        {/* Recent Activity */}
-        <section className="nd-panel nd-activity">
-          <div className="nd-panel-head"><h2>Recent Activity</h2></div>
-          <div className="nd-list">
-            {notes.slice(0, 3).map((n) => (
-              <Link className="nd-row clickable" to={`/note/${n.id}`} key={n.id}>
-                <div className="nd-row-dot success" /><span>{n.title}</span>
-                <small className="topic-chip">{n.topic} • {n.note_type}</small>
-              </Link>
-            ))}
-            {!notes.length && <NdEmpty icon={BookOpen} text="Activity will appear here" />}
-          </div>
-        </section>
-
-        {/* Recent Mistakes */}
-        <section className="nd-panel nd-mistakes">
-          <div className="nd-panel-head"><h2>Recent Mistakes</h2></div>
-          <div className="nd-list">
-            {mistakes.slice(0, 3).map((m) => (
-              <article className="nd-row" key={m.id}>
-                <div className="nd-row-dot danger" /><span>{m.mistake_title}</span>
-                <small className="topic-chip">{m.topic}</small>
-              </article>
-            ))}
-            {!mistakes.length && <NdEmpty icon={AlertTriangle} text="No mistakes logged yet" />}
-          </div>
-        </section>
-
-        {/* Subject Progress */}
-        <section className="nd-panel nd-subjects">
-          <div className="nd-panel-head"><h2>Subject Progress</h2><span className="topic-chip">All Time</span></div>
-          <SubjectBars notes={notes} problems={stats} />
-        </section>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Sub-Components (all data-driven, no hardcoding) ─── */
-
-function BrainOrb() {
-  return (
-    <div className="nd-brain" aria-hidden="true">
-      <div className="nd-brain-core">
-        <Brain size={38} />
-      </div>
-      <div className="nd-brain-ring nd-ring-1" />
-      <div className="nd-brain-ring nd-ring-2" />
-      <div className="nd-brain-ring nd-ring-3" />
-      <div className="nd-brain-node nd-node-1"><Sparkles size={14} /></div>
-      <div className="nd-brain-node nd-node-2"><CheckCircle2 size={14} /></div>
-      <div className="nd-brain-node nd-node-3"><Flame size={12} /></div>
-    </div>
-  )
-}
-
-function NdStat({ icon: Icon, label, value, color, hint, unit = '' }) {
-  return (
-    <div className="nd-stat" style={{ '--c': color }}>
-      <div className="nd-stat-icon"><Icon size={20} /></div>
-      <strong>{value}{unit}</strong>
-      <span>{label}</span>
-      <small>{hint}</small>
-    </div>
-  )
-}
-
-function NdEmpty({ icon: Icon, text }) {
-  return (
-    <div className="nd-empty"><Icon size={18} /><span>{text}</span></div>
-  )
-}
-
-function WeeklyChart({ total, reviewed }) {
-  const today = new Date().getDay()
-  const todayIdx = today === 0 ? 6 : today - 1
-  return (
-    <div className="nd-chart-wrap">
-      <div className="nd-chart-center">
-        <strong>{reviewed}</strong><span>Cards Reviewed</span>
-      </div>
-      <div className="nd-bars">
-        {DAYS.map((d, i) => {
-          const isToday = i === todayIdx
-          const h = isToday ? Math.min(reviewed * 4, 100) || 12 : (i < todayIdx ? Math.max(8, Math.random() * 0) : 0)
-          return (
-            <div className="nd-bar-col" key={d}>
-              <div className={`nd-bar ${isToday ? 'active' : ''}`} style={{ '--h': `${isToday ? Math.max(h, 15) : 8}%` }} />
-              <small className={isToday ? 'active' : ''}>{d}</small>
+      <aside className="cmd-l">
+        <h4 className="cmd-lbl">&gt; revision_queue <span className="cmd-cnt">[{cards.length}]</span></h4>
+        <div className="cmd-tl">
+          {cards.slice(0,6).map(c=>(
+            <div className="cmd-tl-row" key={c.id}>
+              <div className="cmd-tl-pip" />
+              <div><span>{c.question}</span><small>{c.topic} • {c.difficulty}</small></div>
             </div>
-          )
-        })}
+          ))}
+          {!cards.length && <div className="cmd-nil"><Brain size={16}/><span>queue empty — add notes</span></div>}
+        </div>
+        <Link to="/revision/today" className="cmd-go clickable">&gt; open_queue <ArrowRight size={12}/></Link>
+      </aside>
+
+      <main className="cmd-c">
+        <div className="cmd-brain" aria-hidden="true">
+          <div className="cmd-br-glow"/>
+          <div className="cmd-br-core"><Brain size={40}/></div>
+          <div className="cmd-br-orbit o1"><span/><span/></div>
+          <div className="cmd-br-orbit o2"><span/><span/></div>
+          <div className="cmd-br-orbit o3"><span/><span/><span/></div>
+          <div className="cmd-br-float f1"><Code2 size={12}/></div>
+          <div className="cmd-br-float f2"><Sparkles size={12}/></div>
+          <div className="cmd-br-float f3"><CheckCircle2 size={12}/></div>
+          <div className="cmd-br-float f4"><Flame size={10}/></div>
+        </div>
+        <span className="cmd-tag">// memory_engine</span>
+        <p className="cmd-sub">Your coding knowledge neural network</p>
+        <div className="cmd-cta">
+          <Link className="btn btn-primary cmd-glow clickable" to="/revision/today"><Brain size={15}/> Start Revision</Link>
+          <Link className="btn btn-secondary clickable" to="/add-note"><Plus size={15}/> Add Learning</Link>
+        </div>
+      </main>
+
+      <aside className="cmd-r">
+        <h4 className="cmd-lbl">&gt; weak_topics</h4>
+        <div className="cmd-rings">
+          {groupTopics(mistakes).slice(0,4).map(([t,,p])=>(
+            <div className="cmd-rng" key={t}>
+              <Ring pct={p} color="var(--red)"/>
+              <div><span>{t}</span><small>{p}%</small></div>
+            </div>
+          ))}
+          {!mistakes.length && <div className="cmd-nil"><ShieldAlert size={16}/><span>no weak topics</span></div>}
+        </div>
+        <h4 className="cmd-lbl">&gt; recent_log</h4>
+        <div className="cmd-log">
+          {notes.slice(0,4).map(n=>(
+            <Link className="cmd-log-row clickable" to={`/note/${n.id}`} key={n.id}>
+              <CheckCircle2 size={11}/><span>{n.title}</span>
+            </Link>
+          ))}
+          {!notes.length && <div className="cmd-nil"><BookOpen size={16}/><span>no activity</span></div>}
+        </div>
+      </aside>
+
+      <footer className="cmd-f">
+        <SubjectLine notes={notes}/>
+      </footer>
+    </div>
+  )
+}
+
+function Pill({icon:I,v,l,c}){
+  return <div className="cmd-pill" style={{'--c':c}}><I size={14}/><strong>{v}</strong><span>{l}</span></div>
+}
+
+function Ring({pct,color}){
+  const r=16,circ=2*Math.PI*r
+  return(
+    <svg className="cmd-ring-svg" width="40" height="40" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r={r} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="2.5"/>
+      <circle cx="20" cy="20" r={r} fill="none" stroke={color} strokeWidth="2.5"
+        strokeDasharray={circ} strokeDashoffset={circ*(1-pct/100)}
+        strokeLinecap="round" transform="rotate(-90 20 20)" style={{transition:'stroke-dashoffset .8s ease'}}/>
+    </svg>
+  )
+}
+
+function SubjectLine({notes}){
+  const m={}
+  ;(notes||[]).forEach(n=>{m[n.topic]=(m[n.topic]||0)+1})
+  const e=Object.entries(m), t=e.reduce((s,[,c])=>s+c,0)||1
+  const cols=['var(--primary)','var(--accent)','var(--blue)','var(--orange)','var(--green)']
+  if(!e.length) return <div className="cmd-nil" style={{justifyContent:'center'}}><Plus size={14}/><span>add notes to see progress</span></div>
+  return(
+    <div className="cmd-sbar">
+      <span className="cmd-tag">&gt; subject_progress</span>
+      <div className="cmd-sbar-track">
+        {e.slice(0,5).map(([topic,count],i)=>(
+          <div key={topic} className="cmd-sbar-seg" style={{flex:count,background:cols[i%5]}} title={`${topic}: ${Math.round(count/t*100)}%`}/>
+        ))}
+      </div>
+      <div className="cmd-sbar-labels">
+        {e.slice(0,5).map(([topic],i)=>(
+          <small key={topic} style={{color:cols[i%5]}}>{topic}</small>
+        ))}
       </div>
     </div>
   )
 }
 
-function SubjectBars({ notes, problems }) {
-  const topicMap = {}
-  ;(notes || []).forEach(n => { topicMap[n.topic] = (topicMap[n.topic] || 0) + 1 })
-  const entries = Object.entries(topicMap)
-  const total = entries.reduce((s, [, c]) => s + c, 0) || 1
-  const colors = ['var(--primary)', 'var(--accent)', 'var(--blue)', 'var(--orange)', 'var(--green)']
-
-  if (!entries.length) {
-    return <NdEmpty icon={Plus} text="Add notes to see subject breakdown" />
-  }
-
-  return (
-    <div className="nd-subject-list">
-      {entries.slice(0, 5).map(([topic, count], i) => (
-        <div className="nd-subject-row" key={topic}>
-          <div className="nd-subject-dot" style={{ background: colors[i % colors.length] }} />
-          <span>{topic}</span>
-          <div className="nd-bar-track"><div className="nd-bar-fill" style={{ width: `${Math.round((count / total) * 100)}%`, background: colors[i % colors.length] }} /></div>
-          <small>{Math.round((count / total) * 100)}%</small>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function groupByTopic(mistakes) {
-  const map = {}
-  mistakes.forEach(m => { map[m.topic] = (map[m.topic] || 0) + 1 })
-  const total = mistakes.length || 1
-  return Object.entries(map)
-    .sort((a, b) => b[1] - a[1])
-    .map(([topic, count]) => [topic, count, Math.round((count / total) * 100)])
+function groupTopics(arr){
+  const m={}
+  arr.forEach(x=>{m[x.topic]=(m[x.topic]||0)+1})
+  const t=arr.length||1
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v,Math.round(v/t*100)])
 }
