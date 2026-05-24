@@ -59,7 +59,7 @@ export function NoteGrid({ notes }) {
       {notes.map((note) => {
         const Icon = iconMap[note.topic] || (note.code_snippet ? Code : FileText)
         return (
-          <Link to={`/note/${note.id}`} className="explore-card card" key={note.id}>
+          <Link to={`/note/${note.id}`} className="explore-card card" key={note.id} onMouseMove={tiltCard} onMouseLeave={resetTilt}>
             <div className="explore-cover" style={{ '--note-color': topicColor(note.topic) }}><Icon size={36} /></div>
             <div className="explore-card-body">
               <h3>{note.title}</h3>
@@ -72,6 +72,18 @@ export function NoteGrid({ notes }) {
       })}
     </div>
   )
+}
+
+function tiltCard(event) {
+  const card = event.currentTarget
+  const box = card.getBoundingClientRect()
+  const x = (event.clientX - box.left) / box.width - 0.5
+  const y = (event.clientY - box.top) / box.height - 0.5
+  card.style.transform = `translateY(-4px) rotateX(${-y * 5}deg) rotateY(${x * 5}deg)`
+}
+
+function resetTilt(event) {
+  event.currentTarget.style.transform = ''
 }
 
 function topicColor(topic) {

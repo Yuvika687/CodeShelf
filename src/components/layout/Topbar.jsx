@@ -33,7 +33,6 @@ export default function Topbar() {
           className="theme-switch clickable" 
           aria-label="Toggle visual theme"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-          style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card)', border: '1px solid var(--border)' }}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>

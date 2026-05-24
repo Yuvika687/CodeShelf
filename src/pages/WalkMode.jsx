@@ -1,4 +1,4 @@
-import { Eye, Mic, Repeat2, Volume2 } from 'lucide-react'
+import { Eye, Headphones, Mic, Repeat2, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { revisionApi } from '../api/client.js'
 
@@ -28,7 +28,11 @@ export default function WalkMode() {
   return (
     <div className="walk-page">
       <section className="walk-card">
-        <p className="eyebrow">Walk Mode · Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</p>
+        <p className="eyebrow">Walk Mode / Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</p>
+        <div className="walk-orb" aria-hidden="true">
+          <div className="sound-wave" />
+          <Headphones size={70} />
+        </div>
         <h1>{card?.question || 'No walk cards due.'}</h1>
         {showAnswer ? <p className="walk-answer">{card.answer}</p> : null}
         <div className="walk-actions">

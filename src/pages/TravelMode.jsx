@@ -37,10 +37,10 @@ export default function TravelMode() {
   }
 
   return (
-    <div className="page">
-      <PageTitle title="Travel Mode" subtitle="Download today’s revision pack and review without internet." />
+    <div className="page travel-page">
+      <PageTitle title="Travel Mode" subtitle="Download today's revision pack and review without internet." />
       <div className="form-actions">
-        <button className="btn btn-primary" onClick={downloadPack}><Download size={16} /> Download Today’s Pack</button>
+        <button className="btn btn-primary" onClick={downloadPack}><Download size={16} /> Download Today's Pack</button>
         <button className="btn btn-secondary" onClick={sync}><UploadCloud size={16} /> Sync Offline Progress</button>
       </div>
       {message ? <p className="recall-answer">{message}</p> : null}
@@ -52,6 +52,7 @@ export default function TravelMode() {
             <div className="row-actions"><button className="btn btn-secondary" onClick={() => markOffline(card, 'forgot')}>Forgot</button><button className="btn btn-primary" onClick={() => markOffline(card, 'good')}>Knew it</button></div>
           </article>
         ))}
+        {!pack?.cards?.length ? <p className="muted empty-state">No offline pack downloaded yet.</p> : null}
       </div>
     </div>
   )

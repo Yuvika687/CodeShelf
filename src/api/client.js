@@ -112,6 +112,10 @@ export const problemsApi = {
   remove: (id) => api(`/problems/${id}`, { method: 'DELETE' }),
 }
 
+export const githubApi = {
+  saveProblem: (problemId) => api('/github/save-problem', { method: 'POST', body: { problem_id: problemId } }),
+}
+
 export const mistakesApi = {
   list: (params) => api(`/mistakes${q(params)}`),
   create: (payload) => api('/mistakes', { method: 'POST', body: payload }),

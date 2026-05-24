@@ -9,7 +9,7 @@ from starlette.responses import Response
 
 from app.config import get_settings
 from app.database import engine
-from app.routes import activity, ai, auth, dashboard, email, mistakes, notes, problems, revision
+from app.routes import activity, ai, auth, dashboard, email, github, mistakes, notes, problems, revision
 
 
 settings = get_settings()
@@ -76,6 +76,7 @@ app.include_router(revision.router)
 app.include_router(activity.router)
 app.include_router(email.router)
 app.include_router(ai.router)
+app.include_router(github.router)
 
 
 @app.get("/")

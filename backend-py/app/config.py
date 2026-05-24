@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     hf_space_api_name: str = "/predict"
     firebase_project_id: str = ""
     firebase_service_account_json: str = ""
+    github_token: str = ""
+    github_repo: str = ""
+    github_branch: str = "main"
 
     @property
     def cors_origins(self) -> list[str]:
