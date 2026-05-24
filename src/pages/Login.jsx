@@ -1,46 +1,31 @@
 import { Code2, MailCheck, ShieldCheck, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Login() {
   const navigate = useNavigate()
   const { loginWithGoogle } = useAuth()
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
   async function handleGoogle() {
     setError('')
-    setLoading(true)
     try {
       await loginWithGoogle()
       navigate('/')
     } catch (err) {
       setError(err.message)
-      setLoading(false)
     }
   }
 
   return (
-    <AuthShell 
-      title="Access Memory Vault" 
-      subtitle="Continue secure sync via your Google account credentials."
-    >
-      <div className="login-action-area">
-        <button 
-          className={`btn google-button full clickable ${loading ? 'syncing' : ''}`} 
-          onClick={handleGoogle} 
-          type="button"
-          disabled={loading}
-        >
-          <span className="google-mark">G</span>
-          {loading ? 'Decrypting Vault...' : 'Authenticate with Google'}
-        </button>
-        {error ? <p className="form-error">{error}</p> : null}
-      </div>
-      <p className="auth-footer">
-        CodeShelf processes credentials directly. Safe vault keys are generated dynamically.
-      </p>
+    <AuthShell title="Enter your coding memory vault" subtitle="Create or continue with Google. Your verified Google email is where reminders and welcome emails go.">
+      <button className="btn google-button full" onClick={handleGoogle} type="button">
+        <span className="google-mark">G</span>
+        Continue with Google
+      </button>
+      {error ? <p className="form-error">{error}</p> : null}
+      <p className="auth-footer">No password account required. Google verifies your inbox before CodeShelf sends reminders.</p>
     </AuthShell>
   )
 }
@@ -68,36 +53,22 @@ export function AuthShell({ title, subtitle, children }) {
           <span>walk_mode.explain(summary)</span>
           <span>email.send(verified_google_user)</span>
         </div>
-        <div className="auth-logo auth-logo-left">
-          <span className="sidebar-logo-icon"><Code2 size={20} /></span> 
-          <span>CodeShelf</span>
-        </div>
+        <Link to="/" className="auth-logo auth-logo-left"><span><Code2 size={20} /></span> CodeShelf</Link>
         <div className="auth-story-copy">
-          <p className="eyebrow">CODESHELF MEMORY SYSTEM</p>
-          <h1>Learn once.<br/>Remember forever.</h1>
+          <p className="eyebrow">Verified revision system</p>
+          <h1>Learn once. Keep it forever.</h1>
           <p>CodeShelf turns notes, mistakes, commands, and solved problems into spaced recall cards, travel packs, walk-mode explanations, and verified email reminders.</p>
         </div>
         <div className="auth-proof-grid">
-          <div className="card clickable">
-            <Sparkles size={18} color="#e5b95c" />
-            <strong>AI Summarization</strong>
-            <span>HF Space or Gemini fallback</span>
-          </div>
-          <div className="card clickable">
-            <MailCheck size={18} color="#5eead4" />
-            <strong>Verified reminders</strong>
-            <span>Active inbox daily loops</span>
-          </div>
-          <div className="card clickable">
-            <ShieldCheck size={18} color="#10b981" />
-            <strong>Private memory</strong>
-            <span>Your JWT-secured backend</span>
-          </div>
+          <div><Sparkles size={18} /><strong>AI summaries</strong><span>HF Space or Gemini fallback</span></div>
+          <div><MailCheck size={18} /><strong>Verified reminders</strong><span>No fake inbox loops</span></div>
+          <div><ShieldCheck size={18} /><strong>Private memory</strong><span>Your JWT-secured backend</span></div>
         </div>
       </section>
-      <section className="auth-card card">
+      <section className="auth-card premium-card">
+        <div className="auth-card-scan" aria-hidden="true" />
         <div className="auth-card-heading">
-          <p className="eyebrow">SECURE GATEWAY</p>
+          <p className="eyebrow">CodeShelf</p>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
@@ -106,4 +77,3 @@ export function AuthShell({ title, subtitle, children }) {
     </main>
   )
 }
-
