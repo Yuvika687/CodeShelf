@@ -1,73 +1,215 @@
-# CodeShelf
+<div align="center">
 
-CodeShelf is a personal coding memory and revision platform.
+# ⟨/⟩ CodeShelf
 
-**Tagline:** Never forget what you already learned.
+### Your Personal Coding Memory Vault
 
-It stores structured coding knowledge, generates revision cards, schedules spaced repetition, supports walk/travel revision, tracks streaks based on completed reviews, and can send reminder emails.
+**Never forget what you already learned.**
 
-## Stack
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Neon](https://img.shields.io/badge/Neon-PostgreSQL-00e5a0?logo=postgresql&logoColor=white)](https://neon.tech)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
 
-- Frontend: React + Vite
-- Backend: FastAPI
-- Database: Neon PostgreSQL via SQLAlchemy
-- Migrations: Alembic
-- Auth: JWT
-- Email: Resend API, with local console fallback
-- AI: Hugging Face BART for summaries, Gemini-ready fallback endpoints for cards/explanations
+---
 
-## Local Setup
+</div>
+
+## ✦ What is CodeShelf?
+
+CodeShelf is a **spaced-repetition revision platform** built for developers who refuse to forget what they've learned. It transforms raw notes, solved problems, and coding mistakes into an intelligent recall system — with AI-generated flashcards, walk-mode audio revision, offline travel packs, and verified email reminders.
+
+> _Think of it as Anki meets Notion, built specifically for DSA, SQL, System Design, DevOps, and interview prep._
+
+---
+
+## ⚡ Core Features
+
+| Module | Description |
+|---|---|
+| **📚 Knowledge Library** | Concept, problem, mistake, command, interview, and quick recall notes with topic/difficulty filters |
+| **🧠 Revision Engine** | SM-2 spaced repetition with forgot / hard / good / easy ratings and streak tracking |
+| **🎧 Walk Mode** | Audio-first revision — learn by listening with text-to-speech while walking |
+| **✈️ Travel Mode** | Download an offline pack to localStorage, review without internet, sync when back online |
+| **🐛 Mistake Book** | Capture wrong approaches, correct logic, prevention tips — turn errors into memory |
+| **💻 Problem Tracker** | LeetCode/practice tracker with pattern, approach, code, and optional GitHub commit pipeline |
+| **📬 Email Studio** | Verified Gmail reminders with customizable style, timing, topic filters, and preview |
+| **🤖 AI Integration** | HuggingFace BART summaries, Gemini-ready card generation, and LLM JSON import |
+| **🔌 Browser Extension** | Chrome extension for one-click LeetCode problem capture |
+| **🔥 Streaks** | Daily review streaks with minimum card thresholds and progress tracking |
+
+---
+
+## 🏗 Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Frontend (Vite + React 19)        │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │Dashboard │ │ Library  │ │Walk Mode │ │ Email  │ │
+│  │(CMD UI)  │ │ Explorer │ │ (Audio)  │ │ Studio │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
+│       └─────────────┴───────────┴────────────┘      │
+│                         │ JWT Auth                   │
+├─────────────────────────┼───────────────────────────┤
+│                    Backend (FastAPI)                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │  Notes   │ │ Revision │ │ Problems │ │ Email  │ │
+│  │  CRUD    │ │  Engine  │ │ + GitHub │ │ Sender │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
+│       └─────────────┴───────────┴────────────┘      │
+│                         │ SQLAlchemy                  │
+├─────────────────────────┼───────────────────────────┤
+│              Neon PostgreSQL (Serverless)             │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 19, Vite 8, React Router 7, CodeMirror 6, Lucide Icons |
+| **Backend** | FastAPI, SQLAlchemy (async), Alembic migrations |
+| **Database** | Neon PostgreSQL (serverless) — falls back to SQLite locally |
+| **Auth** | Firebase Google Sign-In → JWT tokens |
+| **Email** | Resend API with HTML templates — console fallback for dev |
+| **AI** | HuggingFace Inference (BART), Gemini API (flash), LLM JSON import |
+| **GitHub** | OAuth → repo selection → automated solution commits |
+| **Design** | Space-hacker nebula theme, custom cursor, dual theme (dark/light) |
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js** ≥ 18
+- **Python** ≥ 3.11
+- **PostgreSQL** (or use Neon free tier)
+
+### 1. Clone & Install
+
+```bash
+git clone https://github.com/your-username/codeshelf.git
+cd codeshelf
+npm install
+pip install -r backend-py/requirements.txt
+```
+
+### 2. Environment Setup
 
 ```bash
 cp .env.example .env
 cp backend-py/.env.example backend-py/.env
-npm install
-npm run migrate
-npm run dev:api
-npm run dev
 ```
 
-Frontend: `http://127.0.0.1:5173`
-
-API: `http://127.0.0.1:8000/api`
-
-Health: `http://127.0.0.1:8000/api/health`
-
-If `DATABASE_URL` is not set, the backend uses a local SQLite development database. For Neon, set:
+Configure in `backend-py/.env`:
 
 ```env
 DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
+JWT_SECRET=your-secret-key
+FRONTEND_URL=http://localhost:5173
 ```
 
-Then run:
+Optional keys for full feature set:
+
+```env
+RESEND_API_KEY=re_...          # Email reminders
+GEMINI_API_KEY=...             # AI card generation
+HF_API_KEY=hf_...              # Summaries
+GITHUB_CLIENT_ID=...           # GitHub integration
+GITHUB_CLIENT_SECRET=...
+```
+
+### 3. Run
 
 ```bash
-npm run migrate
+# Terminal 1 — Backend API
+npm run dev:api
+
+# Terminal 2 — Frontend
+npm run dev
 ```
 
-## MVP Modules
+| Service | URL |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| API | `http://localhost:8000/api` |
+| Health | `http://localhost:8000/api/health` |
 
-- Knowledge Library: concept, problem, mistake, command, interview, and quick recall notes
-- Problem Tracker: status, pattern, approach, code, mistake, complexity, next review date
-- Mistake Book: wrong logic, correct logic, reason, prevention tip, repeated count
-- Revision Engine: due cards, spaced repetition ratings, review logs
-- Today Revision: show answer, forgot/hard/good/easy ratings, streak progress
-- Walk Mode: large text and browser text-to-speech
-- Travel Mode: localStorage offline pack and progress sync
-- Email Reminders: preferences, preview, test/daily send through Resend or local print
-- AI endpoints: summary, card generation fallback, email preview, walk explanations
+---
 
-## Deployment
+## 📂 Project Structure
 
-Frontend on Vercel:
+```
+codeshelf/
+├── src/                    # React frontend
+│   ├── pages/              # Route pages (Home, WalkMode, Problems, etc.)
+│   ├── components/         # Layout, NebulaParticles, CursorGlow
+│   ├── context/            # AuthContext (Firebase + JWT)
+│   ├── api/                # API client with token management
+│   └── index.css           # Complete design system
+├── backend-py/             # FastAPI backend
+│   ├── app/
+│   │   ├── main.py         # FastAPI app with CORS
+│   │   ├── routers/        # notes, revision, problems, email, github
+│   │   ├── models/         # SQLAlchemy models
+│   │   └── services/       # AI, email, GitHub services
+│   └── alembic/            # Database migrations
+├── extensions/             # Chrome & VS Code extensions
+├── public/                 # Static assets & favicon
+└── index.html              # Entry point
+```
 
-- Set `VITE_API_BASE_URL=https://your-render-api.onrender.com/api`
+---
 
-Backend on Render:
+## 🎨 Design System
+
+CodeShelf uses a custom **Space Command Center** aesthetic:
+
+- **Nebula particles** — animated canvas star field with constellation lines
+- **Custom cursor** — dot + ring with magnetic snapping on interactive elements
+- **Glassmorphism** — frosted glass cards with `backdrop-filter: blur()`
+- **Dual theme** — Obsidian Dark (default) + Pearl Light
+- **Spring animations** — physics-based cubic-bezier transitions
+- **JetBrains Mono** — monospace font for terminal/code aesthetic
+- **Inter** — primary UI font for readability
+
+---
+
+## 🌐 Deployment
+
+### Frontend → Vercel
+
+```bash
+# Set environment variable:
+VITE_API_BASE_URL=https://your-api.onrender.com/api
+```
+
+### Backend → Render
 
 - Use `backend-py/render.yaml`
-- Set Neon `DATABASE_URL`
-- Set `JWT_SECRET`, `FRONTEND_URL`, and optional `RESEND_API_KEY`, `GEMINI_API_KEY`, `HF_API_KEY`
-- Render build runs Alembic migrations before starting FastAPI
+- Set `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`
+- Build command runs Alembic migrations automatically
 
-Daily reminder emails can be triggered with a Render Cron Job calling `/api/email/send-daily` for the intended user/session flow, or extended later with a service-token batch endpoint.
+### Daily Emails → Render Cron
+
+Schedule `/api/email/send-daily` via Render Cron Job for daily reminders.
+
+---
+
+## 📜 License
+
+This project is private and not currently open-sourced.
+
+---
+
+<div align="center">
+
+**Built with obsession for learning retention.**
+
+*CodeShelf — because forgetting is not an option.*
+
+</div>

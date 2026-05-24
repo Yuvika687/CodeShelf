@@ -1,4 +1,4 @@
-import { CheckCircle2, PlugZap } from 'lucide-react'
+import { CheckCircle2, PlugZap, Shield, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getToken } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -51,6 +51,11 @@ export default function ExtensionConnect() {
           <PlugZap size={16} /> Connect Extension
         </button>
         {status ? <p className={connected ? 'form-success' : 'recall-answer'}>{status}</p> : null}
+        <div className="auth-proof-grid" style={{marginTop: '16px'}}>
+          <div><Zap size={18} /><strong>One-click save</strong><span>Capture problems instantly</span></div>
+          <div><Shield size={18} /><strong>JWT secured</strong><span>Token-based authentication</span></div>
+          <div><PlugZap size={18} /><strong>Auto-sync</strong><span>Problems sync to your library</span></div>
+        </div>
       </section>
     </div>
   )
