@@ -34,7 +34,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_days: int = 14
 
-    backend_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+    backend_cors_origins: str = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost:3000,"
+        "https://code.yogender1.me,"
+        "https://yogender1.me,"
+        "https://code-shelf-org.onrender.com"
+    )
     frontend_url: str = "http://127.0.0.1:5173"
     backend_url: str = "http://127.0.0.1:8000"
     environment: str = "development"
