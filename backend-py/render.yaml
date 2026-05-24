@@ -32,6 +32,10 @@ services:
         value: /predict
       - key: FIREBASE_SERVICE_ACCOUNT_JSON
         sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
   - type: cron
     name: codeshelf-daily-email
     env: python

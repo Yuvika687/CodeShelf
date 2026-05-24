@@ -46,6 +46,7 @@ class User(Base):
     revision_cards: Mapped[list["RevisionCard"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     activities: Mapped[list["DailyActivity"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     email_preferences: Mapped["EmailPreference"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    github_connection: Mapped["GitHubConnection | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
 
 
 class Tag(Base):
@@ -227,3 +228,18 @@ class EmailLog(Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     status: Mapped[str] = mapped_column(String(30), default="printed")
     error_message: Mapped[str] = mapped_column(Text, default="")
+
+
+class GitHubConnection(Base):
+    __tablename__ = "github_connections"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    github_username: Mapped[str] = mapped_column(String(120), default="")
+    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    repo_full_name: Mapped[str] = mapped_column(String(300), default="")
+    default_branch: Mapped[str] = mapped_column(String(80), default="main")
+    connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="github_connection")

@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     github_token: str = ""
     github_repo: str = ""
     github_branch: str = "main"
+    github_client_id: str = ""
+    github_client_secret: str = ""
 
     @property
     def cors_origins(self) -> list[str]:

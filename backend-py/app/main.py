@@ -9,7 +9,7 @@ from starlette.responses import Response
 
 from app.config import get_settings
 from app.database import engine
-from app.routes import activity, ai, auth, dashboard, email, github, mistakes, notes, problems, revision
+from app.routes import activity, ai, auth, dashboard, email, extension, github, mistakes, notes, problems, revision
 
 
 settings = get_settings()
@@ -35,6 +35,8 @@ def allowed_browser_origin(origin: str | None) -> bool:
         return False
     parsed = urlparse(origin)
     host = (parsed.hostname or "").lower()
+    if parsed.scheme == "chrome-extension":
+        return True
     if parsed.scheme == "https" and (host == "yogender1.me" or host.endswith(".yogender1.me")):
         return True
     if parsed.scheme == "https" and host.endswith(".onrender.com"):
@@ -77,6 +79,7 @@ app.include_router(activity.router)
 app.include_router(email.router)
 app.include_router(ai.router)
 app.include_router(github.router)
+app.include_router(extension.router)
 
 
 @app.get("/")
