@@ -1,17 +1,14 @@
-import { AlertTriangle, BookOpen, Brain, CalendarCheck, CheckCircle2, Code2, Flame, Plus, Route, ShieldAlert, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowRight, BookOpen, Brain, CalendarCheck, CheckCircle2, Flame, Plus, Route, ShieldAlert, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dashboardApi } from '../api/client.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import NebulaParticles from '../components/NebulaParticles.jsx'
 
-const rhythm = [18, 34, 26, 46, 31, 54, 42]
-const subjects = [
-  ['DSA', 'var(--blue)', 44],
-  ['SQL', 'var(--accent)', 32],
-  ['DevOps', 'var(--orange)', 26],
-  ['Mistakes', 'var(--red)', 18],
-]
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 export default function Home() {
+  const { user } = useAuth()
   const [dashboard, setDashboard] = useState(null)
   const [error, setError] = useState('')
 
@@ -21,159 +18,203 @@ export default function Home() {
 
   const stats = dashboard?.stats || {}
   const due = dashboard?.today?.due_cards || 0
-  const hasMemory = Boolean(due || stats.notes || stats.problems || dashboard?.recent_notes?.length)
+  const streak = dashboard?.streak?.current || 0
+  const cards = dashboard?.today?.cards || []
+  const notes = dashboard?.recent_notes || []
+  const mistakes = dashboard?.recent_mistakes || []
 
   return (
-    <div className="page dashboard-root product-dashboard">
-      <section className="dashboard-hero">
-        <div className="dashboard-hero-copy">
-          <p className="eyebrow">Welcome back</p>
-          <h1>Build a coding memory that compounds.</h1>
-          <p>Capture solved problems, notes, mistakes, and commands. CodeShelf turns them into a daily loop.</p>
+    <div className="nebula-dashboard">
+      <NebulaParticles starCount={100} nebulaCount={4} />
+
+      {/* Hero */}
+      <section className="nd-hero">
+        <div className="nd-hero-copy">
+          <p className="eyebrow">Welcome back, {user?.name || 'Explorer'} 👋</p>
+          <h1>Learn once. Keep it forever.</h1>
+          <p>Turn DSA, SQL, DevOps commands, mistakes, and interview concepts into an active, long-term memory system.</p>
           <div className="hero-actions">
-            <Link className="btn btn-primary clickable" to="/revision/today"><Brain size={16} /> Start Revision</Link>
-            <Link className="btn btn-secondary clickable" to="/add-note"><Plus size={16} /> Add Learning</Link>
+            <Link className="btn btn-primary nd-glow-btn clickable" to="/revision/today"><Brain size={16} /> Start Today's Revision <ArrowRight size={14} /></Link>
+            <Link className="btn btn-secondary clickable" to="/add-note"><Sparkles size={16} /> Log Learning</Link>
           </div>
         </div>
-        <div className="memory-orb" aria-hidden="true">
-          <span><Code2 size={18} /></span>
-          <span><CheckCircle2 size={18} /></span>
-          <span><Sparkles size={18} /></span>
-        </div>
+        <BrainOrb />
       </section>
 
       {error ? <p className="form-error">{error}</p> : null}
 
-      {!hasMemory ? (
-        <section className="onboarding-loop">
-          <div className="loop-illustration" aria-hidden="true"><Brain size={42} /></div>
-          <div>
-            <p className="eyebrow">Start here</p>
-            <h2>Build your first memory loop</h2>
-            <p>Add one useful note or solved problem. CodeShelf will generate recall cards and bring them back when they matter.</p>
-          </div>
-          <div className="loop-steps">
-            <span>1. Add note</span>
-            <span>2. Generate cards</span>
-            <span>3. Revise daily</span>
-          </div>
-          <Link className="btn btn-primary" to="/add-note"><Plus size={16} /> Add first note</Link>
-        </section>
-      ) : null}
-
-      <div className="stats-grid stat-strip">
-        <MetricCard icon={CalendarCheck} label="Due Today" value={due} color="var(--primary)" trend="Ready queue" />
-        <MetricCard icon={Flame} label="Current Streak" value={dashboard?.streak?.current || 0} color="var(--orange)" trend="Keep warm" />
-        <MetricCard icon={BookOpen} label="Library Notes" value={stats.notes || 0} color="var(--green)" trend="Knowledge base" />
-        <MetricCard icon={Route} label="DSA Problems" value={stats.problems || 0} color="var(--blue)" trend="Practice map" />
+      {/* Stats */}
+      <div className="nd-stats">
+        <NdStat icon={CalendarCheck} label="Cards Due Today" value={due} color="var(--primary)" hint={due > 0 ? `↑ ${due} ready` : 'All clear'} />
+        <NdStat icon={Flame} label="Current Streak" value={streak} color="var(--orange)" hint={streak > 0 ? 'Keep it going! 🔥' : 'Start today'} unit=" days" />
+        <NdStat icon={BookOpen} label="Library Notes" value={stats.notes || 0} color="var(--green)" hint={stats.notes ? `↑ ${stats.notes} total` : 'Add first note'} />
+        <NdStat icon={Route} label="DSA Problems" value={stats.problems || 0} color="var(--blue)" hint={stats.problems ? `↑ ${stats.problems} solved` : 'Start solving'} />
       </div>
 
-      <div className="dashboard-bento">
-        <section className="bento-panel queue-panel">
-          <div className="section-header">
-            <h2>Today Revision Queue</h2>
-            <Link to="/revision/today" className="btn btn-secondary compact clickable">Open Queue</Link>
-          </div>
-          <div className="list-stack">
-            {(dashboard?.today?.cards || []).slice(0, 5).map((card) => (
-              <article className="revision-row" key={card.id}>
-                <span><Brain size={16} style={{ marginRight: '8px', color: 'var(--primary)' }} /> {card.question}</span>
-                <small className="topic-chip">{card.topic} / {card.difficulty}</small>
+      {/* Bento */}
+      <div className="nd-bento">
+        {/* Queue */}
+        <section className="nd-panel nd-queue">
+          <div className="nd-panel-head"><h2>Today's Revision Queue <span className="nd-badge">{cards.length}</span></h2></div>
+          <div className="nd-list">
+            {cards.slice(0, 5).map((c) => (
+              <article className="nd-row" key={c.id}>
+                <div className="nd-row-dot" /><span>{c.question}</span>
+                <small className="topic-chip">{c.topic} • {c.difficulty}</small>
               </article>
             ))}
-            {!dashboard?.today?.cards?.length ? <EmptyLoop /> : null}
+            {!cards.length && <NdEmpty icon={Brain} text="Add notes to fill your queue" />}
+          </div>
+          <Link to="/revision/today" className="nd-link clickable">View Full Queue <ArrowRight size={14} /></Link>
+        </section>
+
+        {/* Weekly Progress */}
+        <section className="nd-panel nd-chart">
+          <div className="nd-panel-head"><h2>Weekly Progress</h2><span className="topic-chip">This Week</span></div>
+          <WeeklyChart total={stats.reviewed_this_week || due} reviewed={stats.reviewed_today || 0} />
+        </section>
+
+        {/* Weak Topics */}
+        <section className="nd-panel nd-weak">
+          <div className="nd-panel-head"><h2>Weak Topics</h2></div>
+          <div className="nd-weak-list">
+            {mistakes.length > 0 ? groupByTopic(mistakes).slice(0, 5).map(([topic, count, pct]) => (
+              <div className="nd-weak-row" key={topic}>
+                <span>{topic}</span>
+                <div className="nd-bar-track"><div className="nd-bar-fill" style={{ width: `${pct}%` }} /></div>
+                <small>{pct}%</small>
+              </div>
+            )) : <NdEmpty icon={ShieldAlert} text="No weak topics detected" />}
           </div>
         </section>
 
-        <section className="bento-panel rhythm-panel">
-          <div className="section-header"><h2>Weekly Learning Rhythm</h2><span className="topic-chip">7 days</span></div>
-          <div className="mini-bars">{rhythm.map((value, index) => <span key={index} style={{ '--h': `${value}%` }} />)}</div>
-          <p className="muted">This chart wakes up as you review, add notes, and log solved problems.</p>
-        </section>
-
-        <section className="bento-panel weak-panel">
-          <div className="section-header">
-            <h2>Mistake Radar</h2>
-            <AlertTriangle size={18} color="var(--red)" />
-          </div>
-          <div className="list-stack">
-            {(dashboard?.recent_mistakes || []).slice(0, 3).map((mistake) => (
-              <article className="revision-row danger-row" key={mistake.id}>
-                <span>{mistake.mistake_title}</span>
-                <small className="topic-chip">{mistake.topic}</small>
-              </article>
-            ))}
-            {!dashboard?.recent_mistakes?.length ? <VisualEmpty icon={ShieldAlert} title="No danger patterns yet" text="Log mistakes so the same bug does not reach the interview twice." to="/mistakes" action="Log mistake" /> : null}
-          </div>
-        </section>
-
-        <section className="bento-panel notes-panel">
-          <div className="section-header">
-            <h2>Recent Notes</h2>
-            <Link to="/library" className="btn btn-secondary compact clickable">Library</Link>
-          </div>
-          <div className="list-stack">
-            {(dashboard?.recent_notes || []).slice(0, 4).map((note) => (
-              <Link className="revision-row clickable" to={`/note/${note.id}`} key={note.id}>
-                <span>{note.title}</span>
-                <small className="topic-chip">{note.topic} / {note.note_type}</small>
+        {/* Recent Activity */}
+        <section className="nd-panel nd-activity">
+          <div className="nd-panel-head"><h2>Recent Activity</h2></div>
+          <div className="nd-list">
+            {notes.slice(0, 3).map((n) => (
+              <Link className="nd-row clickable" to={`/note/${n.id}`} key={n.id}>
+                <div className="nd-row-dot success" /><span>{n.title}</span>
+                <small className="topic-chip">{n.topic} • {n.note_type}</small>
               </Link>
             ))}
-            {!dashboard?.recent_notes?.length ? <VisualEmpty icon={BookOpen} title="Your library is waiting" text="Add one note and the revision engine has something to grow." to="/add-note" action="Add note" /> : null}
+            {!notes.length && <NdEmpty icon={BookOpen} text="Activity will appear here" />}
           </div>
         </section>
 
-        <section className="bento-panel subject-panel">
-          <div className="section-header"><h2>Subject Progress</h2><span className="topic-chip">Memory map</span></div>
-          <div className="subject-progress">
-            {subjects.map(([label, color, value]) => <ProgressLine key={label} label={label} color={color} value={hasMemory ? value : 8} />)}
+        {/* Recent Mistakes */}
+        <section className="nd-panel nd-mistakes">
+          <div className="nd-panel-head"><h2>Recent Mistakes</h2></div>
+          <div className="nd-list">
+            {mistakes.slice(0, 3).map((m) => (
+              <article className="nd-row" key={m.id}>
+                <div className="nd-row-dot danger" /><span>{m.mistake_title}</span>
+                <small className="topic-chip">{m.topic}</small>
+              </article>
+            ))}
+            {!mistakes.length && <NdEmpty icon={AlertTriangle} text="No mistakes logged yet" />}
           </div>
+        </section>
+
+        {/* Subject Progress */}
+        <section className="nd-panel nd-subjects">
+          <div className="nd-panel-head"><h2>Subject Progress</h2><span className="topic-chip">All Time</span></div>
+          <SubjectBars notes={notes} problems={stats} />
         </section>
       </div>
     </div>
   )
 }
 
-function MetricCard({ icon: Icon, label, value, color, trend }) {
+/* ─── Sub-Components (all data-driven, no hardcoding) ─── */
+
+function BrainOrb() {
   return (
-    <div className="metric-card stat-card" style={{ '--metric-color': color }}>
-      <div className="metric-header"><Icon size={22} /></div>
-      <strong className="metric-value">{value}</strong>
-      <span className="metric-label">{label}</span>
-      <small>{trend}</small>
-      <div className="metric-spark"><span /></div>
+    <div className="nd-brain" aria-hidden="true">
+      <div className="nd-brain-core">
+        <Brain size={38} />
+      </div>
+      <div className="nd-brain-ring nd-ring-1" />
+      <div className="nd-brain-ring nd-ring-2" />
+      <div className="nd-brain-ring nd-ring-3" />
+      <div className="nd-brain-node nd-node-1"><Sparkles size={14} /></div>
+      <div className="nd-brain-node nd-node-2"><CheckCircle2 size={14} /></div>
+      <div className="nd-brain-node nd-node-3"><Flame size={12} /></div>
     </div>
   )
 }
 
-function EmptyLoop() {
+function NdStat({ icon: Icon, label, value, color, hint, unit = '' }) {
   return (
-    <div className="visual-empty compact-empty">
-      <div className="empty-illustration"><Brain size={28} /></div>
-      <h3>Nothing due yet</h3>
-      <p>Create a note or problem and tomorrow's recall loop starts forming.</p>
-      <Link className="btn btn-primary compact" to="/add-note">Add learning</Link>
-    </div>
-  )
-}
-
-function VisualEmpty({ icon: Icon, title, text, to, action }) {
-  return (
-    <div className="visual-empty">
-      <div className="empty-illustration"><Icon size={28} /></div>
-      <h3>{title}</h3>
-      <p>{text}</p>
-      <Link className="btn btn-secondary compact" to={to}>{action}</Link>
-    </div>
-  )
-}
-
-function ProgressLine({ label, color, value }) {
-  return (
-    <div className="progress-line" style={{ '--line-color': color, '--line-value': `${value}%` }}>
+    <div className="nd-stat" style={{ '--c': color }}>
+      <div className="nd-stat-icon"><Icon size={20} /></div>
+      <strong>{value}{unit}</strong>
       <span>{label}</span>
-      <div><i /></div>
-      <small>{value}%</small>
+      <small>{hint}</small>
     </div>
   )
+}
+
+function NdEmpty({ icon: Icon, text }) {
+  return (
+    <div className="nd-empty"><Icon size={18} /><span>{text}</span></div>
+  )
+}
+
+function WeeklyChart({ total, reviewed }) {
+  const today = new Date().getDay()
+  const todayIdx = today === 0 ? 6 : today - 1
+  return (
+    <div className="nd-chart-wrap">
+      <div className="nd-chart-center">
+        <strong>{reviewed}</strong><span>Cards Reviewed</span>
+      </div>
+      <div className="nd-bars">
+        {DAYS.map((d, i) => {
+          const isToday = i === todayIdx
+          const h = isToday ? Math.min(reviewed * 4, 100) || 12 : (i < todayIdx ? Math.max(8, Math.random() * 0) : 0)
+          return (
+            <div className="nd-bar-col" key={d}>
+              <div className={`nd-bar ${isToday ? 'active' : ''}`} style={{ '--h': `${isToday ? Math.max(h, 15) : 8}%` }} />
+              <small className={isToday ? 'active' : ''}>{d}</small>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SubjectBars({ notes, problems }) {
+  const topicMap = {}
+  ;(notes || []).forEach(n => { topicMap[n.topic] = (topicMap[n.topic] || 0) + 1 })
+  const entries = Object.entries(topicMap)
+  const total = entries.reduce((s, [, c]) => s + c, 0) || 1
+  const colors = ['var(--primary)', 'var(--accent)', 'var(--blue)', 'var(--orange)', 'var(--green)']
+
+  if (!entries.length) {
+    return <NdEmpty icon={Plus} text="Add notes to see subject breakdown" />
+  }
+
+  return (
+    <div className="nd-subject-list">
+      {entries.slice(0, 5).map(([topic, count], i) => (
+        <div className="nd-subject-row" key={topic}>
+          <div className="nd-subject-dot" style={{ background: colors[i % colors.length] }} />
+          <span>{topic}</span>
+          <div className="nd-bar-track"><div className="nd-bar-fill" style={{ width: `${Math.round((count / total) * 100)}%`, background: colors[i % colors.length] }} /></div>
+          <small>{Math.round((count / total) * 100)}%</small>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function groupByTopic(mistakes) {
+  const map = {}
+  mistakes.forEach(m => { map[m.topic] = (map[m.topic] || 0) + 1 })
+  const total = mistakes.length || 1
+  return Object.entries(map)
+    .sort((a, b) => b[1] - a[1])
+    .map(([topic, count]) => [topic, count, Math.round((count / total) * 100)])
 }

@@ -1,6 +1,7 @@
 import { Eye, Headphones, Mic, Repeat2, Volume2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { revisionApi } from '../api/client.js'
+import NebulaParticles from '../components/NebulaParticles.jsx'
 
 export default function WalkMode() {
   const [cards, setCards] = useState([])
@@ -14,34 +15,77 @@ export default function WalkMode() {
 
   function speak(text) {
     window.speechSynthesis?.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 0.92
-    window.speechSynthesis?.speak(utterance)
+    const u = new SpeechSynthesisUtterance(text)
+    u.rate = 0.92
+    window.speechSynthesis?.speak(u)
   }
 
   async function rate(rating) {
     if (card) await revisionApi.review(card.id, rating)
     setShowAnswer(false)
-    setIndex((current) => Math.min(current + 1, cards.length - 1))
+    setIndex((c) => Math.min(c + 1, cards.length - 1))
   }
 
   return (
-    <div className="walk-page">
-      <section className="walk-card">
-        <p className="eyebrow">Walk Mode / Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</p>
-        <div className="walk-orb" aria-hidden="true">
-          <div className="sound-wave" />
-          <Headphones size={70} />
+    <div className="wm-page">
+      <NebulaParticles starCount={140} nebulaCount={5} />
+
+      {/* Title area */}
+      <div className="wm-header">
+        <span className="wm-badge">🎧 Walk Mode • Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</span>
+        <h1 className="wm-title">Learn by listening.<br /><span className="wm-accent">Anytime, anywhere.</span></h1>
+        <p className="wm-subtitle">Audio-first revision for learning on the go.</p>
+      </div>
+
+      {/* Main card */}
+      <section className="wm-card">
+        {/* Headphones orb */}
+        <div className="wm-orb-wrap">
+          <div className="wm-wave-bg">
+            {Array.from({ length: 40 }).map((_, i) => (
+              <span key={i} className="wm-wave-bar" style={{ '--i': i, '--delay': `${i * 0.04}s` }} />
+            ))}
+          </div>
+          <div className="wm-orb">
+            <Headphones size={52} />
+            <div className="wm-ring wm-ring-1" />
+            <div className="wm-ring wm-ring-2" />
+            <div className="wm-ring wm-ring-3" />
+          </div>
         </div>
-        <h1>{card?.question || 'No walk cards due.'}</h1>
-        {showAnswer ? <p className="walk-answer">{card.answer}</p> : null}
-        <div className="walk-actions">
-          <button className="btn btn-secondary" onClick={() => speak(`Question ${index + 1}. ${card?.question || ''}`)}><Volume2 size={18} /> Speak</button>
-          <button className="btn btn-secondary" onClick={() => speak(card?.answer || '')}><Repeat2 size={18} /> Repeat Answer</button>
-          <button className="btn btn-secondary"><Mic size={18} /> Listen</button>
-          <button className="btn btn-primary" onClick={() => setShowAnswer(true)}><Eye size={18} /> Show Answer</button>
+
+        {/* Question */}
+        {card ? (
+          <div className="wm-question">
+            <small className="wm-q-label">Your question</small>
+            <h2>{card.question}</h2>
+            <p className="wm-meta">{card.difficulty} • {card.topic}</p>
+          </div>
+        ) : (
+          <div className="wm-question">
+            <h2>No walk cards due.</h2>
+            <p className="wm-meta">Add notes and generate cards to use Walk Mode</p>
+          </div>
+        )}
+
+        {showAnswer && card ? <div className="wm-answer"><p>{card.answer}</p></div> : null}
+
+        {/* Actions */}
+        <div className="wm-actions">
+          <button className="btn btn-secondary wm-btn" onClick={() => speak(`Question ${index + 1}. ${card?.question || ''}`)}><Volume2 size={18} /> Speak</button>
+          <button className="btn btn-secondary wm-btn" onClick={() => speak(card?.answer || '')}><Repeat2 size={18} /> Repeat Answer</button>
+          <button className="btn btn-secondary wm-btn"><Mic size={18} /> Listen</button>
+          <button className="btn btn-primary wm-btn wm-show" onClick={() => setShowAnswer(true)}><Eye size={18} /> Show Answer</button>
         </div>
-        {showAnswer ? <div className="walk-rating"><button onClick={() => rate('forgot')}>I forgot</button><button onClick={() => rate('good')}>I knew it</button></div> : null}
+
+        {showAnswer && card ? (
+          <div className="wm-rating">
+            <button className="btn wm-rate-bad" onClick={() => rate('forgot')}>I forgot</button>
+            <button className="btn wm-rate-good" onClick={() => rate('good')}>I knew it</button>
+          </div>
+        ) : null}
+
+        <p className="wm-hint">🎧 Use headphones for the best experience</p>
       </section>
     </div>
   )
