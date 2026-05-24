@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy import func, select
@@ -331,7 +331,7 @@ def render_daily_text(ctx: dict) -> str:
         ctx["intro"],
         "",
         f"Streak: {ctx['user'].current_streak} days",
-        f"Today: {len(ctx['card_ids'])} quick email questions",
+        f"Today: {ctx['activity'].cards_reviewed}/{MIN_DAILY_CARDS} reviews done. Your streak completes at {MIN_DAILY_CARDS}.",
         f"Weak topics: {', '.join(ctx['weak_topics'])}",
         "",
         "Quick quiz:",
@@ -385,7 +385,7 @@ def render_daily_html(ctx: dict) -> str:
                   <p style="margin:0 0 18px;font-size:17px;line-height:1.55;">{html.escape(ctx['intro'])}</p>
                   <div style="padding:16px;border-radius:12px;background:#f7f9fc;border:1px solid #e7ebf2;">
                     <p style="margin:0 0 6px;"><strong>Streak:</strong> {html.escape(ctx['streak_bar'])} {ctx['user'].current_streak} days</p>
-                    <p style="margin:0 0 6px;"><strong>Today:</strong> {len(ctx['card_ids'])} inbox questions · {ctx['activity'].cards_reviewed}/{MIN_DAILY_CARDS} app reviews done</p>
+                    <p style="margin:0 0 6px;"><strong>Today:</strong> {ctx['activity'].cards_reviewed}/{MIN_DAILY_CARDS} reviews done · streak completes at {MIN_DAILY_CARDS}</p>
                     <p style="margin:0;"><strong>Weak:</strong> {html.escape(', '.join(ctx['weak_topics']))}</p>
                   </div>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;">{card_html}</table>
@@ -417,6 +417,36 @@ def render_simple_html(label: str, subject: str, facts: list[str], cta_url: str)
         </table>
       </td></tr></table>
     </body></html>
+    """
+
+
+def render_email_action_html(title: str, message: str, rating: str = "", result: str = "saved") -> str:
+    color = "#16a34a" if result in {"saved", "correct"} else "#dc2626"
+    safe_rating = html.escape(rating)
+    return f"""
+    <!doctype html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{html.escape(title)}</title>
+      </head>
+      <body style="margin:0;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+        <main style="min-height:100vh;display:grid;place-items:center;padding:24px;">
+          <section style="max-width:520px;width:100%;background:#ffffff;border:1px solid #e4e8f0;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(15,23,42,.12);">
+            <div style="background:#172033;color:#ffffff;padding:22px 24px;">
+              <p style="margin:0 0 6px;color:#cbd5e1;font-size:13px;">CodeShelf Email Action</p>
+              <h1 style="margin:0;font-size:24px;">{html.escape(title)}</h1>
+            </div>
+            <div style="padding:24px;">
+              <div style="width:48px;height:48px;border-radius:50%;background:{color};color:#ffffff;display:grid;place-items:center;font-size:24px;font-weight:bold;">✓</div>
+              <p style="font-size:17px;line-height:1.55;margin:18px 0 8px;">{html.escape(message)}</p>
+              {f'<p style="margin:0 0 18px;color:#647084;">Rating saved: <strong>{safe_rating}</strong></p>' if rating else ''}
+              <a href="{html.escape(frontend_url('/revision/today', {'from': 'email-action'}))}" style="display:inline-block;padding:12px 16px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;">Open Today Revision</a>
+            </div>
+          </section>
+        </main>
+      </body>
+    </html>
     """
 
 
@@ -582,29 +612,28 @@ async def cron_streak_alert(x_cron_secret: str | None = Header(default=None), db
 async def answer_from_email(token: str = Query(...), selected: str = Query(...), db: AsyncSession = Depends(get_db)):
     payload = decode_email_token(token, "email_answer")
     if not payload:
-        return RedirectResponse(frontend_url("/revision/today", {"from": "email", "result": "invalid"}), status_code=302)
+        return HTMLResponse(render_email_action_html("Link expired", "This email action link is invalid or expired.", result="invalid"), status_code=400)
     selected_label = selected.strip().upper()
     correct = selected_label == str(payload.get("correct_label", "")).upper()
     saved = await apply_email_review(db, str(payload["sub"]), str(payload["card_id"]), "good" if correct else "hard")
     result = "correct" if correct else "wrong"
     if not saved:
         result = "missing"
-    return RedirectResponse(frontend_url("/revision/today", {"from": "email", "result": result}), status_code=302)
+    message = "Your answer was saved to CodeShelf." if saved else "This card was not found, so nothing changed."
+    return HTMLResponse(render_email_action_html("Answer recorded", message, "good" if correct else "hard", result=result))
 
 
 @router.get("/review")
 async def review_from_email(token: str = Query(...), db: AsyncSession = Depends(get_db)):
     payload = decode_email_token(token, "email_review")
     if not payload:
-        return RedirectResponse(frontend_url("/revision/today", {"from": "email", "result": "invalid"}), status_code=302)
+        return HTMLResponse(render_email_action_html("Link expired", "This email action link is invalid or expired.", result="invalid"), status_code=400)
     rating = str(payload.get("rating", "good")).lower()
     if rating not in {"forgot", "hard", "good", "easy"}:
         rating = "good"
     saved = await apply_email_review(db, str(payload["sub"]), str(payload["card_id"]), rating)
-    return RedirectResponse(
-        frontend_url("/revision/today", {"from": "email", "result": "saved" if saved else "missing", "rating": rating}),
-        status_code=302,
-    )
+    message = "Your review was saved to CodeShelf." if saved else "This card was not found, so nothing changed."
+    return HTMLResponse(render_email_action_html("Review recorded", message, rating, result="saved" if saved else "missing"))
 
 
 @router.get("/unsubscribe")

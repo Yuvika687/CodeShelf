@@ -97,7 +97,8 @@ async def github_connect(
     The frontend should open this URL in a new window/tab, passing the JWT
     as a query param so we can identify the user in the callback.
     """
-    _require_oauth_config()
+    if not settings.github_client_id or not settings.github_client_secret:
+        return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=oauth_missing")
     # We encode the JWT in the state parameter so the callback can identify the user
     authorize_url = (
         f"https://github.com/login/oauth/authorize"

@@ -17,7 +17,15 @@ export default function Problems() {
   const [selectedRepo, setSelectedRepo] = useState('')
 
   useEffect(() => { load() }, [filters])
-  useEffect(() => { refreshGithub() }, [])
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('github') === 'oauth_missing') {
+      setGithubStatus('GitHub OAuth is not configured on the server yet. Add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET once, then every user can authorize with one click.')
+    } else if (params.get('github') === 'connected') {
+      setGithubStatus('GitHub connected. Refresh status, then load repos.')
+    }
+    refreshGithub()
+  }, [])
   const load = () => problemsApi.list(filters).then((data) => setProblems(data.problems || [])).catch((err) => setError(err.message))
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const solved = problems.filter((problem) => problem.status === 'solved').length
