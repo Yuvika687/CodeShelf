@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from jose import JWTError, jwt
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import GEMINI_MODEL, get_settings
@@ -759,6 +759,14 @@ async def cron_weekly(x_cron_secret: str | None = Header(default=None), db: Asyn
 async def cron_streak_alert(x_cron_secret: str | None = Header(default=None), db: AsyncSession = Depends(get_db)):
     cron_allowed(x_cron_secret)
     return await send_to_enabled_users(db, build_streak_alert)
+
+
+@router.post("/cron-cleanup")
+async def cron_cleanup(x_cron_secret: str | None = Header(default=None), db: AsyncSession = Depends(get_db)):
+    cron_allowed(x_cron_secret)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+    result = await db.execute(delete(EmailLog).where(EmailLog.sent_at < cutoff))
+    return {"deleted_email_logs": result.rowcount or 0, "older_than_days": 90}
 
 
 @router.get("/session")

@@ -22,7 +22,9 @@ from app.github_utils import (
     GitHubSyncError,
     build_solution_path,
     push_file_to_github,
+    readme_path_for_solution,
     render_solution_file,
+    render_solution_readme,
 )
 from app.models import GitHubConnection, Problem, User
 from app.routes.utils import fallback_cards_from_problem, problem_out
@@ -148,6 +150,17 @@ async def extension_submit(
             approach=body.approach,
             mistake=body.mistake,
         )
+        readme_path = readme_path_for_solution(path)
+        readme_content = render_solution_readme(
+            language=body.language,
+            problem_title=body.problem_title,
+            url=body.problem_url,
+            difficulty=difficulty,
+            topic=topic,
+            tags=body.tags,
+            approach=body.approach,
+            mistake=body.mistake,
+        )
         try:
             commit = await push_file_to_github(
                 token=conn.access_token,
@@ -156,6 +169,14 @@ async def extension_submit(
                 path=path,
                 content=content,
                 commit_message=f"CodeShelf: {body.problem_title}",
+            )
+            await push_file_to_github(
+                token=conn.access_token,
+                repo=conn.repo_full_name,
+                branch=conn.default_branch,
+                path=readme_path,
+                content=readme_content,
+                commit_message=f"CodeShelf README: {body.problem_title}",
             )
             gh_result = GitHubResult(
                 synced=True,

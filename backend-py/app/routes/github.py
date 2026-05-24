@@ -35,7 +35,9 @@ from app.github_utils import (
     get_github_user,
     list_github_repos,
     push_file_to_github,
+    readme_path_for_solution,
     render_solution_file,
+    render_solution_readme,
 )
 from app.models import GitHubConnection, Problem, User
 
@@ -301,6 +303,19 @@ async def save_problem_to_github(
         approach=problem.approach or "",
         mistake=problem.mistake or "",
     )
+    readme_path = readme_path_for_solution(path)
+    readme_content = render_solution_readme(
+        language=problem.language or "python",
+        problem_title=problem.title,
+        url=problem.url or "",
+        difficulty=problem.difficulty or "",
+        topic=problem.topic or "",
+        tags=[item for item in [problem.topic, problem.pattern] if item],
+        approach=problem.approach or "",
+        mistake=problem.mistake or "",
+        time_complexity=problem.time_complexity or "",
+        space_complexity=problem.space_complexity or "",
+    )
 
     try:
         commit = await push_file_to_github(
@@ -310,6 +325,14 @@ async def save_problem_to_github(
             path=path,
             content=content,
             commit_message=f"CodeShelf: {problem.title}",
+        )
+        await push_file_to_github(
+            token=conn.access_token,
+            repo=conn.repo_full_name,
+            branch=conn.default_branch,
+            path=readme_path,
+            content=readme_content,
+            commit_message=f"CodeShelf README: {problem.title}",
         )
     except GitHubSyncError as exc:
         _handle_github_error(exc)

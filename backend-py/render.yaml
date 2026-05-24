@@ -69,3 +69,14 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+  - type: cron
+    name: codeshelf-email-log-cleanup
+    env: python
+    schedule: "0 4 1 * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import os, httpx; httpx.post(os.environ['BACKEND_URL'].rstrip('/') + '/api/email/cron-cleanup', headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=60)"
+    envVars:
+      - key: BACKEND_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false

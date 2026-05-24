@@ -349,3 +349,61 @@ def render_solution_file(
     # Ensure code ends with a newline
     code_body = code.rstrip() + "\n" if code else ""
     return header + code_body
+
+
+def readme_path_for_solution(path: str) -> str:
+    return str(PurePosixPath(path).with_name("README.md"))
+
+
+def render_solution_readme(
+    language: str,
+    problem_title: str,
+    url: str = "",
+    difficulty: str = "",
+    topic: str = "",
+    tags: list[str] | None = None,
+    approach: str = "",
+    mistake: str = "",
+    time_complexity: str = "",
+    space_complexity: str = "",
+) -> str:
+    tags = [tag for tag in (tags or []) if tag]
+    rows = [
+        ("Platform", "LeetCode"),
+        ("Difficulty", difficulty.capitalize() if difficulty else ""),
+        ("Topic", topic),
+        ("Language", language),
+        ("Tags", ", ".join(tags)),
+        ("Time Complexity", time_complexity),
+        ("Space Complexity", space_complexity),
+    ]
+    metadata = "\n".join(f"| {label} | {value or '-'} |" for label, value in rows)
+    source = f"[Open problem]({url})" if url else "-"
+    return f"""# {problem_title}
+
+{source}
+
+## Snapshot
+
+| Field | Value |
+| --- | --- |
+{metadata}
+
+## Approach
+
+{approach.strip() or "Add the invariant, data structure choice, and final return condition here."}
+
+## Mistakes To Avoid
+
+{mistake.strip() or "No mistake recorded yet."}
+
+## Revision Prompts
+
+- What is the key idea behind this solution?
+- Which edge case can break this approach?
+- What is the time and space complexity?
+
+---
+
+Saved by CodeShelf.
+"""
