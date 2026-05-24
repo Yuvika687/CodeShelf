@@ -14,6 +14,11 @@
       "matches": ["https://leetcode.com/problems/*"],
       "js": ["content-script.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.onrender.com/*", "https://*.yogender1.me/*", "http://127.0.0.1/*", "http://localhost/*"],
+      "js": ["connect-script.js"],
+      "run_at": "document_idle"
     }
   ]
 }

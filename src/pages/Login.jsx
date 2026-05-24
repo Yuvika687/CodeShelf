@@ -1,10 +1,11 @@
 import { Code2, MailCheck, ShieldCheck, Sparkles } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { loginWithGoogle } = useAuth()
   const [error, setError] = useState('')
 
@@ -12,7 +13,7 @@ export default function Login() {
     setError('')
     try {
       await loginWithGoogle()
-      navigate('/')
+      navigate(location.state?.from || '/')
     } catch (err) {
       setError(err.message)
     }

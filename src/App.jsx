@@ -15,6 +15,7 @@ import Problems from './pages/Problems.jsx'
 import ProblemDetail from './pages/ProblemDetail.jsx'
 import MistakeBook from './pages/MistakeBook.jsx'
 import EmailSettings from './pages/EmailSettings.jsx'
+import ExtensionConnect from './pages/ExtensionConnect.jsx'
 import CursorGlow from './components/CursorGlow.jsx'
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="problems/:id" element={<ProblemDetail />} />
           <Route path="mistakes" element={<MistakeBook />} />
           <Route path="email-settings" element={<EmailSettings />} />
+          <Route path="extension-connect" element={<ExtensionConnect />} />
           <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>

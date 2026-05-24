@@ -18,18 +18,8 @@
 
       <section class="panel">
         <h2>Connection</h2>
-        <label>CodeShelf API URL<input id="apiBase" placeholder="https://your-api.onrender.com/api" /></label>
-        <label>CodeShelf JWT<input id="jwt" type="password" placeholder="Paste your CodeShelf token" /></label>
-        <button id="saveSettings">Save connection</button>
-      </section>
-
-      <section class="panel github">
-        <h2>GitHub authorization</h2>
-        <p>Use a fine-grained token with Contents read/write for your solution repo.</p>
-        <label>GitHub token<input id="githubToken" type="password" placeholder="ghp_..." /></label>
-        <label>Repo<input id="githubRepo" placeholder="username/codeshelf-solutions" /></label>
-        <label>Branch<input id="githubBranch" placeholder="main" /></label>
-        <a id="tokenLink" href="https://github.com/settings/tokens/new?description=CodeShelf%20Capture&scopes=repo" target="_blank" rel="noreferrer">Authorize on GitHub</a>
+        <p id="connectionState">Connect your CodeShelf account once. No API URL or token paste needed.</p>
+        <button id="connectCodeShelf">Connect CodeShelf</button>
       </section>
 
       <section class="panel">
@@ -37,7 +27,6 @@
         <div id="capturePreview" class="preview">Open a LeetCode problem and click capture.</div>
         <button id="capturePage">Capture current page</button>
         <button id="saveCodeShelf">Save to CodeShelf</button>
-        <button id="commitGithub">Commit to GitHub</button>
       </section>
 
       <p id="status"></p>

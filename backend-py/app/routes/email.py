@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import random
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
@@ -37,6 +38,11 @@ class EmailPreferencesIn(BaseModel):
     include_streak_alert: bool = True
     reminder_style: str = "focused"
     subject_style: str = "personal"
+
+
+class SessionReviewIn(BaseModel):
+    token: str
+    rating: str
 
 
 def parse_time(value: str) -> time:
@@ -172,16 +178,12 @@ def option_set(card: RevisionCard) -> tuple[list[dict[str, str]], str]:
 def build_card_blocks(cards: list[RevisionCard]) -> list[dict]:
     blocks = []
     for index, card in enumerate(cards[:3], 1):
-        options, correct_label = option_set(card)
-        token = create_email_token(
-            {"sub": card.user_id, "card_id": card.id, "correct_label": correct_label, "type": "email_answer"},
-            hours=24,
-        )
         blocks.append(
             {
                 "index": index,
                 "id": card.id,
                 "question": card.question,
+                "answer": card.answer,
                 "topic": card.topic,
                 "remembered_url": action_url(
                     "/api/email/review",
@@ -201,13 +203,10 @@ def build_card_blocks(cards: list[RevisionCard]) -> list[dict]:
                         )
                     },
                 ),
-                "options": [
-                    {
-                        **option,
-                        "url": action_url("/api/email/answer", {"token": token, "selected": option["label"]}),
-                    }
-                    for option in options
-                ],
+                "review_token": create_email_token(
+                    {"sub": card.user_id, "card_id": card.id, "type": "email_review_card"},
+                    hours=24,
+                ),
             }
         )
     return blocks
@@ -253,6 +252,15 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "/api/email/unsubscribe",
         {"token": create_email_token({"sub": user.id, "type": "email_unsubscribe"}, hours=24 * 30)},
     )
+    session_url = action_url(
+        "/api/email/session",
+        {
+            "token": create_email_token(
+                {"sub": user.id, "card_ids": [card.id for card in cards[:3]], "type": "email_session"},
+                hours=24,
+            )
+        },
+    )
     context = {
         "email_type": "daily_revision",
         "subject": subject,
@@ -265,6 +273,7 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "activity": activity,
         "streak_bar": streak_bar(user.current_streak or 0),
         "open_url": frontend_url("/revision/today", {"from": "email"}),
+        "session_url": session_url,
         "preferences_url": frontend_url("/email-settings"),
         "unsubscribe_url": unsubscribe,
         "card_ids": [card.id for card in cards[:3]],
@@ -325,49 +334,36 @@ async def build_streak_alert(db: AsyncSession, user: User) -> dict | None:
 
 
 def render_daily_text(ctx: dict) -> str:
+    card_count = len(ctx["cards"])
     lines = [
         "CodeShelf - Daily Revision",
         "",
-        ctx["intro"],
+        f"{ctx['user'].name}, are you ready for the battle?",
+        f"{card_count} questions are waiting. Start the sprint and record all answers on one page.",
         "",
         f"Streak: {ctx['user'].current_streak} days",
         f"Today: {ctx['activity'].cards_reviewed}/{MIN_DAILY_CARDS} reviews done. Your streak completes at {MIN_DAILY_CARDS}.",
         f"Weak topics: {', '.join(ctx['weak_topics'])}",
         "",
-        "Quick quiz:",
+        f"Start sprint: {ctx['session_url']}",
+        "",
+        "Questions in this sprint:",
     ]
     for card in ctx["cards"]:
         lines.append(f"Q{card['index']}: {card['question']}")
-        lines.append(f"I remembered: {card['remembered_url']}")
-        lines.append(f"I forgot: {card['forgot_url']}")
-        for option in card["options"]:
-            lines.append(f"{option['label']}. {option['text']} - {option['url']}")
-        lines.append("")
     lines.extend(["Today's revision plan:", *[f"{idx}. {item}" for idx, item in enumerate(ctx["plan"], 1)], "", ctx["open_url"]])
     return "\n".join(lines)
 
 
 def render_daily_html(ctx: dict) -> str:
+    card_count = len(ctx["cards"])
     card_html = ""
     for card in ctx["cards"]:
-        options = "".join(
-            f"""
-            <a href="{html.escape(option['url'])}" style="display:inline-block;margin:6px 8px 6px 0;padding:10px 12px;border:1px solid #d6dbe6;border-radius:8px;color:#172033;text-decoration:none;background:#ffffff;">
-              <strong>{html.escape(option['label'])}</strong> {html.escape(option['text'])}
-            </a>
-            """
-            for option in card["options"]
-        )
         card_html += f"""
         <tr>
-          <td style="padding:18px 0;border-top:1px solid #edf0f5;">
-            <p style="margin:0 0 6px;color:#647084;font-size:13px;">Q{card['index']} · {html.escape(card['topic'])}</p>
-            <h3 style="margin:0 0 10px;color:#172033;font-size:18px;line-height:1.35;">{html.escape(card['question'])}</h3>
-            <div style="margin:0 0 10px;">
-              <a href="{html.escape(card['remembered_url'])}" style="display:inline-block;margin:0 8px 8px 0;padding:10px 12px;border-radius:8px;color:#ffffff;text-decoration:none;background:#16a34a;font-weight:bold;">I remembered</a>
-              <a href="{html.escape(card['forgot_url'])}" style="display:inline-block;margin:0 8px 8px 0;padding:10px 12px;border-radius:8px;color:#ffffff;text-decoration:none;background:#dc2626;font-weight:bold;">I forgot</a>
-            </div>
-            <div>{options}</div>
+          <td style="padding:14px 0;border-top:1px solid #edf0f5;">
+            <p style="margin:0 0 5px;color:#647084;font-size:13px;">Question {card['index']} · {html.escape(card['topic'])}</p>
+            <h3 style="margin:0;color:#172033;font-size:17px;line-height:1.38;">{html.escape(card['question'])}</h3>
           </td>
         </tr>
         """
@@ -382,16 +378,20 @@ def render_daily_html(ctx: dict) -> str:
               <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="max-width:640px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e4e8f0;">
                 <tr><td style="padding:26px 28px;background:#172033;color:#ffffff;"><h1 style="margin:0;font-size:24px;">CodeShelf Daily Revision</h1><p style="margin:8px 0 0;color:#cbd5e1;">Never forget what you learned.</p></td></tr>
                 <tr><td style="padding:26px 28px;">
-                  <p style="margin:0 0 18px;font-size:17px;line-height:1.55;">{html.escape(ctx['intro'])}</p>
+                  <p style="margin:0 0 8px;color:#647084;font-size:13px;font-weight:bold;letter-spacing:.06em;text-transform:uppercase;">Revision Sprint</p>
+                  <h2 style="margin:0 0 10px;font-size:26px;line-height:1.2;color:#172033;">{html.escape(ctx['user'].name)}, are you ready for the battle?</h2>
+                  <p style="margin:0 0 18px;font-size:17px;line-height:1.55;">{card_count} question{'' if card_count == 1 else 's'} are waiting. Tap once, answer everything on one page, and CodeShelf records your progress live.</p>
                   <div style="padding:16px;border-radius:12px;background:#f7f9fc;border:1px solid #e7ebf2;">
                     <p style="margin:0 0 6px;"><strong>Streak:</strong> {html.escape(ctx['streak_bar'])} {ctx['user'].current_streak} days</p>
                     <p style="margin:0 0 6px;"><strong>Today:</strong> {ctx['activity'].cards_reviewed}/{MIN_DAILY_CARDS} reviews done · streak completes at {MIN_DAILY_CARDS}</p>
                     <p style="margin:0;"><strong>Weak:</strong> {html.escape(', '.join(ctx['weak_topics']))}</p>
                   </div>
+                  <a href="{html.escape(ctx['session_url'])}" style="display:block;margin:20px 0 6px;padding:15px 18px;background:#2563eb;color:#ffffff;text-align:center;text-decoration:none;border-radius:12px;font-weight:bold;font-size:16px;">Start {card_count}-Question Battle</a>
+                  <p style="margin:0 0 12px;color:#647084;font-size:13px;text-align:center;">Works on desktop and mobile.</p>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;">{card_html}</table>
                   <h2 style="font-size:18px;margin:22px 0 8px;">Today's revision plan</h2>
                   <ol style="padding-left:22px;margin:0 0 22px;">{plan_items}</ol>
-                  <a href="{html.escape(ctx['open_url'])}" style="display:inline-block;padding:13px 18px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;">Open CodeShelf & Start Revision</a>
+                  <a href="{html.escape(ctx['open_url'])}" style="display:inline-block;padding:13px 18px;background:#172033;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:bold;">Open Full CodeShelf</a>
                 </td></tr>
                 <tr><td style="padding:18px 28px;background:#f7f9fc;color:#647084;font-size:13px;">
                   CodeShelf · <a href="{html.escape(ctx['preferences_url'])}" style="color:#2563eb;">Email preferences</a> · <a href="{html.escape(ctx['unsubscribe_url'])}" style="color:#2563eb;">Unsubscribe</a>
@@ -445,6 +445,159 @@ def render_email_action_html(title: str, message: str, rating: str = "", result:
             </div>
           </section>
         </main>
+      </body>
+    </html>
+    """
+
+
+def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
+    sprint_cards = [
+        {
+            "id": card.id,
+            "question": card.question,
+            "answer": card.answer,
+            "topic": card.topic,
+            "difficulty": card.difficulty,
+            "token": create_email_token(
+                {"sub": user.id, "card_id": card.id, "type": "email_review_card"},
+                hours=24,
+            ),
+        }
+        for card in cards
+    ]
+    data = json.dumps(sprint_cards).replace("</", "<\\/")
+    return f"""
+    <!doctype html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CodeShelf Battle Sprint</title>
+        <style>
+          * {{ box-sizing: border-box; }}
+          body {{ margin: 0; min-height: 100vh; background: #f4f6fb; color: #172033; font-family: Arial, Helvetica, sans-serif; }}
+          main {{ min-height: 100vh; display: grid; place-items: center; padding: 18px; }}
+          .shell {{ width: min(720px, 100%); background: #fff; border: 1px solid #e4e8f0; border-radius: 18px; overflow: hidden; box-shadow: 0 22px 70px rgba(15, 23, 42, .14); }}
+          .hero {{ padding: 28px; background: #172033; color: #fff; }}
+          .hero p {{ margin: 0 0 8px; color: #cbd5e1; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }}
+          .hero h1 {{ margin: 0; font-size: clamp(26px, 6vw, 42px); line-height: 1.08; }}
+          .hero span {{ color: #93c5fd; }}
+          .body {{ padding: 24px; }}
+          .intro {{ color: #475569; font-size: 17px; line-height: 1.55; margin: 0 0 18px; }}
+          .battle-btn, .rate button, .open-app {{ border: 0; border-radius: 12px; padding: 13px 16px; font-weight: 800; font-size: 15px; cursor: pointer; }}
+          .battle-btn {{ width: 100%; background: #2563eb; color: white; font-size: 17px; }}
+          .card {{ display: none; margin-top: 18px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }}
+          .card.active {{ display: block; }}
+          .meta {{ margin: 0 0 8px; color: #64748b; font-size: 13px; font-weight: 700; }}
+          h2 {{ margin: 0 0 14px; font-size: clamp(22px, 5vw, 30px); line-height: 1.25; }}
+          .answer {{ display: none; margin: 14px 0; padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #e2e8f0; white-space: pre-wrap; }}
+          .answer.show {{ display: block; }}
+          .rate {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }}
+          .show {{ background: #172033; color: white; }}
+          .forgot {{ background: #dc2626; color: white; }}
+          .remembered {{ background: #16a34a; color: white; }}
+          .status {{ margin: 14px 0 0; min-height: 24px; color: #475569; font-weight: 700; }}
+          .progress {{ height: 10px; background: #e2e8f0; border-radius: 999px; overflow: hidden; margin: 18px 0 0; }}
+          .bar {{ height: 100%; width: 0%; background: #2563eb; transition: width .25s ease; }}
+          .done {{ display: none; text-align: center; padding: 22px 0 4px; }}
+          .done h2 {{ color: #16a34a; }}
+          .open-app {{ display: inline-block; margin-top: 10px; background: #172033; color: #fff; text-decoration: none; }}
+          @media (max-width: 520px) {{ .hero, .body {{ padding: 20px; }} .rate {{ grid-template-columns: 1fr; }} }}
+        </style>
+      </head>
+      <body>
+        <main>
+          <section class="shell">
+            <div class="hero">
+              <p>CodeShelf Battle Sprint</p>
+              <h1>{html.escape(user.name)}, are you ready for the <span>battle?</span></h1>
+            </div>
+            <div class="body">
+              <p class="intro">{len(cards)} questions. One page. No repeated email redirects. Tap a rating and your CodeShelf progress updates live.</p>
+              <button class="battle-btn" id="start">I am ready. Go on.</button>
+              <div class="progress"><div class="bar" id="bar"></div></div>
+              <div id="cards"></div>
+              <div class="done" id="done">
+                <h2>Battle complete.</h2>
+                <p class="intro">Your responses were recorded in CodeShelf.</p>
+                <a class="open-app" href="{html.escape(frontend_url('/revision/today', {'from': 'email-session'}))}">Open Today Revision</a>
+              </div>
+            </div>
+          </section>
+        </main>
+        <script>
+          const cards = {data};
+          const root = document.getElementById('cards');
+          const done = document.getElementById('done');
+          const bar = document.getElementById('bar');
+          let index = 0;
+          let completed = 0;
+          root.innerHTML = cards.map((card, i) => `
+            <article class="card" data-index="${{i}}">
+              <p class="meta">Question ${{i + 1}} / ${{cards.length}} · ${{escapeHtml(card.topic || 'General')}} · ${{escapeHtml(card.difficulty || 'Medium')}}</p>
+              <h2>${{escapeHtml(card.question)}}</h2>
+              <button class="battle-btn show" type="button" data-show="${{i}}">Show answer</button>
+              <div class="answer" id="answer-${{i}}">${{escapeHtml(card.answer)}}</div>
+              <div class="rate">
+                <button class="forgot" type="button" data-rate="${{i}}" data-rating="forgot">I forgot</button>
+                <button class="remembered" type="button" data-rate="${{i}}" data-rating="good">I remembered</button>
+              </div>
+              <p class="status" id="status-${{i}}"></p>
+            </article>
+          `).join('');
+          function escapeHtml(value) {{
+            return String(value || '').replace(/[&<>"']/g, ch => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'": '&#039;'}}[ch]));
+          }}
+          function showCard(i) {{
+            document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+            const next = document.querySelector(`[data-index="${{i}}"]`);
+            if (next) next.classList.add('active');
+          }}
+          function updateProgress() {{
+            bar.style.width = `${{cards.length ? Math.round((completed / cards.length) * 100) : 100}}%`;
+          }}
+          document.getElementById('start').addEventListener('click', () => {{
+            document.getElementById('start').style.display = 'none';
+            showCard(0);
+          }});
+          root.addEventListener('click', async (event) => {{
+            const show = event.target.closest('[data-show]');
+            if (show) {{
+              document.getElementById(`answer-${{show.dataset.show}}`).classList.add('show');
+              return;
+            }}
+            const button = event.target.closest('[data-rate]');
+            if (!button || button.disabled) return;
+            const i = Number(button.dataset.rate);
+            const card = cards[i];
+            const status = document.getElementById(`status-${{i}}`);
+            button.closest('.rate').querySelectorAll('button').forEach(item => item.disabled = true);
+            status.textContent = 'Saving...';
+            try {{
+              const response = await fetch('/api/email/session-review', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{ token: card.token, rating: button.dataset.rating }})
+              }});
+              if (!response.ok) throw new Error('Could not save this answer.');
+              completed += 1;
+              updateProgress();
+              status.textContent = 'Saved to CodeShelf.';
+              setTimeout(() => {{
+                index += 1;
+                if (index >= cards.length) {{
+                  document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+                  done.style.display = 'block';
+                }} else {{
+                  showCard(index);
+                }}
+              }}, 450);
+            }} catch (error) {{
+              status.textContent = error.message || 'Save failed. Try again.';
+              button.closest('.rate').querySelectorAll('button').forEach(item => item.disabled = false);
+            }}
+          }});
+          updateProgress();
+        </script>
       </body>
     </html>
     """
@@ -606,6 +759,42 @@ async def cron_weekly(x_cron_secret: str | None = Header(default=None), db: Asyn
 async def cron_streak_alert(x_cron_secret: str | None = Header(default=None), db: AsyncSession = Depends(get_db)):
     cron_allowed(x_cron_secret)
     return await send_to_enabled_users(db, build_streak_alert)
+
+
+@router.get("/session")
+async def email_session(token: str = Query(...), db: AsyncSession = Depends(get_db)):
+    payload = decode_email_token(token, "email_session")
+    if not payload:
+        return HTMLResponse(render_email_action_html("Link expired", "This email sprint link is invalid or expired.", result="invalid"), status_code=400)
+    user_id = str(payload.get("sub") or "")
+    card_ids = [str(card_id) for card_id in payload.get("card_ids", []) if card_id]
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user or not card_ids:
+        return HTMLResponse(render_email_action_html("Sprint unavailable", "No cards were found for this sprint.", result="missing"), status_code=404)
+    rows = (
+        await db.execute(
+            select(RevisionCard).where(RevisionCard.user_id == user.id, RevisionCard.id.in_(card_ids))
+        )
+    ).scalars().all()
+    by_id = {card.id: card for card in rows}
+    cards = [by_id[card_id] for card_id in card_ids if card_id in by_id]
+    if not cards:
+        return HTMLResponse(render_email_action_html("Sprint unavailable", "No cards were found for this sprint.", result="missing"), status_code=404)
+    return HTMLResponse(render_email_session_html(user, cards))
+
+
+@router.post("/session-review")
+async def review_from_email_session(body: SessionReviewIn, db: AsyncSession = Depends(get_db)):
+    payload = decode_email_token(body.token, "email_review_card")
+    if not payload:
+        raise HTTPException(status_code=400, detail="This review link is invalid or expired.")
+    rating = body.rating.lower()
+    if rating not in {"forgot", "hard", "good", "easy"}:
+        raise HTTPException(status_code=400, detail="Invalid rating.")
+    saved = await apply_email_review(db, str(payload["sub"]), str(payload["card_id"]), rating)
+    if not saved:
+        raise HTTPException(status_code=404, detail="Card not found.")
+    return {"ok": True, "rating": rating}
 
 
 @router.get("/answer")

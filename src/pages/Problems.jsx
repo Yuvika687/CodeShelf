@@ -23,6 +23,10 @@ export default function Problems() {
       setGithubStatus('GitHub OAuth is not configured on the server yet. Add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET once, then every user can authorize with one click.')
     } else if (params.get('github') === 'connected') {
       setGithubStatus('GitHub connected. Refresh status, then load repos.')
+    } else if (params.get('github') === 'missing_code') {
+      setGithubStatus('GitHub did not send an authorization code. Start from the Connect button instead of opening the callback URL directly.')
+    } else if (params.get('github') === 'missing_state') {
+      setGithubStatus('GitHub authorization lost the app session. Start Connect again from this page.')
     }
     refreshGithub()
   }, [])

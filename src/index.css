@@ -1843,6 +1843,26 @@ progress::-moz-progress-bar {
   align-items: center;
 }
 
+.extension-connect-page {
+  min-height: calc(100vh - var(--topbar-height) - 80px);
+  display: grid;
+  place-items: center;
+}
+
+.extension-connect-card {
+  width: min(620px, 100%);
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+.extension-connect-card h1 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: clamp(32px, 6vw, 48px);
+  line-height: 1.05;
+}
+
 .cursor-dot,
 .cursor-ring {
   position: fixed;

@@ -112,7 +112,7 @@ async def github_connect(
 
 @router.get("/callback")
 async def github_callback(
-    code: str = Query(...),
+    code: str = Query(""),
     state: str = Query(""),
     db: AsyncSession = Depends(get_db),
 ):
@@ -120,6 +120,10 @@ async def github_callback(
     GitHub OAuth callback. Exchanges the code for an access token,
     fetches the GitHub username, and stores the connection.
     """
+    if not code:
+        return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=missing_code")
+    if not state:
+        return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=missing_state")
     _require_oauth_config()
 
     # 1. Identify the user from the state (JWT)
