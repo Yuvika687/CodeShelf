@@ -24,8 +24,8 @@ Use:
 
 1. Open a LeetCode problem page.
 2. Click "Capture current page".
-3. Click "Save to CodeShelf".
-4. Click "Commit to GitHub" if desired.
+3. Click "Save to CodeShelf" to save or update the problem through the backend extension endpoint. If your CodeShelf account has GitHub connected, the backend also syncs it to the selected repo.
+4. Click "Commit to GitHub" only if you want the extension to commit directly with the GitHub token stored in the popup.
 
 ## VS Code: Local Practice Sync
 

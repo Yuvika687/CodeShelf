@@ -11,7 +11,7 @@ POST /api/extension/submit
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,6 +71,7 @@ async def extension_submit(
     """
 
     # ── Duplicate check ───────────────────────────────────────────────
+    existing_problem: Problem | None = None
     if body.problem_url:
         dup_result = await db.execute(
             select(Problem).where(
@@ -78,15 +79,7 @@ async def extension_submit(
                 Problem.url == body.problem_url,
             )
         )
-        existing = dup_result.scalar_one_or_none()
-        if existing:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    "message": f"You already saved '{existing.title}'. Update it instead of creating a duplicate.",
-                    "existing_problem_id": existing.id,
-                },
-            )
+        existing_problem = dup_result.scalar_one_or_none()
 
     # ── Normalize input ───────────────────────────────────────────────
     topic = body.tags[0].strip().title() if body.tags else "DSA"
@@ -96,26 +89,39 @@ async def extension_submit(
         difficulty = "Medium"
 
     # ── Save to database ──────────────────────────────────────────────
-    problem = Problem(
-        user_id=user.id,
-        platform="LeetCode",
-        title=body.problem_title.strip(),
-        url=body.problem_url.strip(),
-        difficulty=difficulty,
-        topic=topic,
-        pattern=pattern,
-        status="solved",
-        approach=body.approach.strip(),
-        code=body.code,
-        language=body.language.strip().lower(),
-        mistake=body.mistake.strip(),
-    )
-    db.add(problem)
+    if existing_problem:
+        problem = existing_problem
+        problem.title = body.problem_title.strip() or problem.title
+        problem.difficulty = difficulty
+        problem.topic = topic
+        problem.pattern = pattern
+        problem.status = "solved"
+        problem.approach = body.approach.strip() or problem.approach
+        problem.code = body.code or problem.code
+        problem.language = body.language.strip().lower() or problem.language
+        problem.mistake = body.mistake.strip() or problem.mistake
+    else:
+        problem = Problem(
+            user_id=user.id,
+            platform="LeetCode",
+            title=body.problem_title.strip(),
+            url=body.problem_url.strip(),
+            difficulty=difficulty,
+            topic=topic,
+            pattern=pattern,
+            status="solved",
+            approach=body.approach.strip(),
+            code=body.code,
+            language=body.language.strip().lower(),
+            mistake=body.mistake.strip(),
+        )
+        db.add(problem)
     await db.flush()
 
     # Generate revision cards
-    db.add_all(fallback_cards_from_problem(problem))
-    await db.flush()
+    if not existing_problem:
+        db.add_all(fallback_cards_from_problem(problem))
+        await db.flush()
 
     # ── GitHub auto-push ──────────────────────────────────────────────
     gh_result = GitHubResult(synced=False)
@@ -176,6 +182,7 @@ async def extension_submit(
 
     return {
         "ok": True,
+        "updated": bool(existing_problem),
         "problem": problem_out(problem),
         "github": gh_result.model_dump(),
     }

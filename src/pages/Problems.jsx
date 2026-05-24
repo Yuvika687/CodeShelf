@@ -1,4 +1,4 @@
-import { Download, GitBranch, Search } from 'lucide-react'
+import { Download, ExternalLink, GitBranch, RefreshCw, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { githubApi, problemsApi } from '../api/client.js'
@@ -12,8 +12,12 @@ export default function Problems() {
   const [form, setForm] = useState(emptyProblem)
   const [error, setError] = useState('')
   const [githubStatus, setGithubStatus] = useState('')
+  const [github, setGithub] = useState(null)
+  const [repos, setRepos] = useState([])
+  const [selectedRepo, setSelectedRepo] = useState('')
 
   useEffect(() => { load() }, [filters])
+  useEffect(() => { refreshGithub() }, [])
   const load = () => problemsApi.list(filters).then((data) => setProblems(data.problems || [])).catch((err) => setError(err.message))
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   const solved = problems.filter((problem) => problem.status === 'solved').length
@@ -23,15 +27,62 @@ export default function Problems() {
   async function submit(event) {
     event.preventDefault()
     setGithubStatus('')
-    const data = await problemsApi.create(form)
+    setError('')
     try {
-      const saved = await githubApi.saveProblem(data.problem.id)
-      setGithubStatus(`Committed to GitHub: ${saved.path}`)
+      const data = await problemsApi.create(form)
+      if (github?.connected && github?.repo) {
+        try {
+          const saved = await githubApi.saveProblem(data.problem.id)
+          setGithubStatus(`Committed to GitHub: ${saved.path}`)
+        } catch (err) {
+          setGithubStatus(`Problem saved in CodeShelf. GitHub sync skipped: ${err.message}`)
+        }
+      } else {
+        setGithubStatus('Problem saved in CodeShelf. Connect GitHub and choose a repo to enable commits.')
+      }
+      setForm(emptyProblem)
+      load()
     } catch (err) {
-      setGithubStatus(`Problem saved in CodeShelf. GitHub sync skipped: ${err.message}`)
+      setError(err.message)
     }
-    setForm(emptyProblem)
-    load()
+  }
+
+  async function refreshGithub() {
+    try {
+      const data = await githubApi.status()
+      setGithub(data)
+      if (data.repo) setSelectedRepo(data.repo)
+    } catch {
+      setGithub(null)
+    }
+  }
+
+  function connectGithub() {
+    window.open(githubApi.connectUrl(), '_blank', 'noopener,noreferrer')
+    setGithubStatus('GitHub connect opened. After approving, return here and refresh status.')
+  }
+
+  async function loadRepos() {
+    setGithubStatus('')
+    try {
+      const data = await githubApi.repos()
+      setRepos(data.repos || [])
+      setGithubStatus(data.repos?.length ? 'Choose a repo, then save it as the default target.' : 'No pushable repos found for this GitHub account.')
+    } catch (err) {
+      setGithubStatus(err.message)
+    }
+  }
+
+  async function saveRepo() {
+    if (!selectedRepo) return
+    const repo = repos.find((item) => item.full_name === selectedRepo)
+    try {
+      const data = await githubApi.setRepo({ repo_full_name: selectedRepo, default_branch: repo?.default_branch || github?.branch || 'main' })
+      setGithub((current) => ({ ...(current || {}), connected: true, repo: data.repo, branch: data.branch }))
+      setGithubStatus(`GitHub target saved: ${data.repo} (${data.branch})`)
+    } catch (err) {
+      setGithubStatus(err.message)
+    }
   }
 
   return (
@@ -76,7 +127,25 @@ export default function Problems() {
         </section>
         <aside className="card github-panel">
           <h2><GitBranch size={18} /> GitHub Save Pipeline</h2>
-          <p className="muted">Saving a problem now also attempts a backend GitHub commit into platform/topic/pattern folders. Configure the backend with GITHUB_TOKEN, GITHUB_REPO, and GITHUB_BRANCH.</p>
+          <p className="muted">Connect GitHub once, choose a target repo, and CodeShelf will commit intentionally saved problems into organized solution folders.</p>
+          <div className="github-status-card">
+            <strong>{github?.connected ? `Connected as ${github.github_username || 'GitHub user'}` : 'GitHub not connected'}</strong>
+            <span>{github?.repo ? `${github.repo} / ${github.branch || 'main'}` : 'Choose a repo to enable backend commits.'}</span>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary compact" onClick={connectGithub}><ExternalLink size={14} /> Connect</button>
+            <button type="button" className="btn btn-secondary compact" onClick={refreshGithub}><RefreshCw size={14} /> Refresh</button>
+            <button type="button" className="btn btn-secondary compact" onClick={loadRepos}>Load Repos</button>
+          </div>
+          {repos.length ? (
+            <div className="repo-picker">
+              <select className="input" value={selectedRepo} onChange={(event) => setSelectedRepo(event.target.value)}>
+                <option value="">Select repo</option>
+                {repos.map((repo) => <option key={repo.full_name} value={repo.full_name}>{repo.full_name}</option>)}
+              </select>
+              <button type="button" className="btn btn-primary compact" onClick={saveRepo}>Use Repo</button>
+            </div>
+          ) : null}
           <small>No contest scraping or auto-submit logic is included. The pipeline only commits what you intentionally save.</small>
           <div className="pipeline-steps"><span>Save</span><span>Commit</span><span>Folder</span><span>Repo</span></div>
           <div className="extension-downloads">

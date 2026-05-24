@@ -26,20 +26,26 @@ function monacoCode() {
 }
 
 function captureProblem() {
+  if (location.pathname.includes('/contest/')) {
+    return null
+  }
   const title = textFrom([
     '[data-cy="question-title"]',
     'a[href^="/problems/"]',
     'h1',
   ]).replace(/^\d+\.\s*/, '')
   const description = textFrom(['[data-track-load="description_content"]', '.elfjS', '[class*="description"]'])
-  const topic = textFrom(['[data-cy="topic-tag"]']) || 'DSA'
+  const tags = [...document.querySelectorAll('[data-cy="topic-tag"], a[href^="/tag/"], a[href*="/tag/"]')]
+    .map((node) => node.textContent.trim())
+    .filter(Boolean)
+  const topic = tags[0] || 'DSA'
   return {
     platform: location.hostname.includes('leetcode') ? 'LeetCode' : location.hostname,
     title: title || document.title.replace(' - LeetCode', ''),
     url: location.href,
     difficulty: leetcodeDifficulty(),
     topic,
-    pattern: '',
+    pattern: tags[1] || '',
     status: 'solved',
     approach: description.slice(0, 1600),
     code: monacoCode(),
@@ -53,6 +59,7 @@ function captureProblem() {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== 'CODESHELF_CAPTURE') return false
-  sendResponse({ ok: true, problem: captureProblem() })
+  const problem = captureProblem()
+  sendResponse(problem ? { ok: true, problem } : { ok: false, error: 'Contest pages are intentionally not captured.' })
   return true
 })

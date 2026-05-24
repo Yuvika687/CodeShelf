@@ -29,6 +29,7 @@ class NoteIn(BaseModel):
     summary: str = ""
     tags: list[str] = []
     generate_cards: bool = True
+    revision_cards: list[dict[str, str]] = []
 
 
 @router.get("")
@@ -73,7 +74,22 @@ async def create_note(body: NoteIn, user: User = Depends(get_current_user), db: 
     note.tags = await resolve_tags(db, body.tags)
     db.add(note)
     await db.flush()
-    if body.generate_cards:
+    imported_cards = [
+        RevisionCard(
+            user_id=user.id,
+            note_id=note.id,
+            question=str(card.get("question", "")).strip(),
+            answer=str(card.get("answer", "")).strip(),
+            card_type=str(card.get("card_type", "recall")).strip() or "recall",
+            topic=body.topic,
+            difficulty=body.difficulty,
+        )
+        for card in body.revision_cards
+        if str(card.get("question", "")).strip() and str(card.get("answer", "")).strip()
+    ]
+    if imported_cards:
+        db.add_all(imported_cards)
+    elif body.generate_cards:
         db.add_all(fallback_cards_from_note(note))
     await db.flush()
     return {"note": note_out(note)}
@@ -96,7 +112,7 @@ async def update_note(note_id: str, body: NoteIn, user: User = Depends(get_curre
     note = result.scalar_one_or_none()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
-    for key, value in body.model_dump(exclude={"tags", "generate_cards"}).items():
+    for key, value in body.model_dump(exclude={"tags", "generate_cards", "revision_cards"}).items():
         setattr(note, key, value)
     note.tags = await resolve_tags(db, body.tags)
     await db.flush()

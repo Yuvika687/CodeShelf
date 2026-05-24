@@ -3,6 +3,7 @@ import { debugError, debugLog, redact, responseHeaders } from '../debug.js'
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api'
 const cleanApiBase = configuredApiBase.replace(/\/+$/, '')
 const API_BASE = cleanApiBase.endsWith('/api') ? cleanApiBase : `${cleanApiBase}/api`
+export const apiBase = API_BASE
 
 debugLog('api config', {
   configuredApiBase,
@@ -113,6 +114,11 @@ export const problemsApi = {
 }
 
 export const githubApi = {
+  status: () => api('/github/status'),
+  repos: () => api('/github/repos'),
+  setRepo: (payload) => api('/github/set-repo', { method: 'POST', body: payload }),
+  disconnect: () => api('/github/disconnect', { method: 'POST' }),
+  connectUrl: () => `${API_BASE}/github/connect?token=${encodeURIComponent(getToken() || '')}`,
   saveProblem: (problemId) => api('/github/save-problem', { method: 'POST', body: { problem_id: problemId } }),
 }
 

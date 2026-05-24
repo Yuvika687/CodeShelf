@@ -44,18 +44,20 @@ async function saveCodeShelf() {
     setStatus('Add CodeShelf API URL and JWT first.')
     return
   }
-  const response = await fetch(`${apiBase}/problems`, {
+  const response = await fetch(`${apiBase}/extension/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-    body: JSON.stringify(capturedProblem),
+    body: JSON.stringify(extensionPayload(capturedProblem)),
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    setStatus(data.detail || data.error || 'CodeShelf save failed.')
+    setStatus(readError(data) || 'CodeShelf save failed.')
     return
   }
   capturedProblem.id = data.problem?.id
-  setStatus('Saved to CodeShelf.')
+  const github = data.github || {}
+  const action = data.updated ? 'Updated' : 'Saved'
+  setStatus(github.synced ? `${action} and synced: ${github.path}` : `${action} in CodeShelf. ${github.message || 'Use Commit to GitHub for token-based direct commit.'}`)
 }
 
 async function commitGithub() {
@@ -70,8 +72,32 @@ async function commitGithub() {
   }
   const path = solutionPath(capturedProblem)
   const content = renderMarkdown(capturedProblem)
-  await putGithubFile({ token, repo, branch, path, content, message: `CodeShelf: save ${capturedProblem.title}` })
-  setStatus(`Committed: ${path}`)
+  try {
+    await putGithubFile({ token, repo, branch, path, content, message: `CodeShelf: save ${capturedProblem.title}` })
+    setStatus(`Committed: ${path}`)
+  } catch (error) {
+    setStatus(`GitHub commit failed: ${error.message}`)
+  }
+}
+
+function extensionPayload(problem) {
+  return {
+    problem_title: problem.title,
+    problem_url: problem.url,
+    difficulty: problem.difficulty || 'Medium',
+    tags: [problem.topic, problem.pattern].filter(Boolean),
+    code: problem.code || '',
+    language: problem.language || 'cpp',
+    notes: problem.notes || '',
+    mistake: problem.mistake || '',
+    approach: problem.approach || '',
+  }
+}
+
+function readError(data) {
+  if (typeof data.detail === 'string') return data.detail
+  if (data.detail?.message) return data.detail.message
+  return data.error || ''
 }
 
 async function putGithubFile({ token, repo, branch, path, content, message }) {

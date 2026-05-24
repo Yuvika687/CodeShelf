@@ -57,15 +57,19 @@ async function commitCurrentFile() {
     return
   }
   const path = solutionPath(problem)
-  await putGithubFile({
-    token,
-    repo,
-    branch,
-    path,
-    content: renderMarkdown(problem),
-    message: `CodeShelf: save ${problem.title}`,
-  })
-  vscode.window.showInformationMessage(`Committed to GitHub: ${path}`)
+  try {
+    await putGithubFile({
+      token,
+      repo,
+      branch,
+      path,
+      content: renderMarkdown(problem),
+      message: `CodeShelf: save ${problem.title}`,
+    })
+    vscode.window.showInformationMessage(`Committed to GitHub: ${path}`)
+  } catch (error) {
+    vscode.window.showErrorMessage(`GitHub commit failed: ${error.message}`)
+  }
 }
 
 async function currentProblem() {

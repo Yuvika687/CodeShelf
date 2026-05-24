@@ -26,70 +26,64 @@ export default function WalkMode() {
     setIndex((c) => Math.min(c + 1, cards.length - 1))
   }
 
-  return (
-    <div className="wm-page">
-      <NebulaParticles starCount={140} nebulaCount={5} />
+  const bars = Array.from({ length: 48 }, (_, i) => {
+    const d = Math.abs(i - 24) / 24
+    return { h: Math.max(0.12, 1 - d * d), delay: i * 0.032 }
+  })
 
-      {/* Title area */}
-      <div className="wm-header">
-        <span className="wm-badge">🎧 Walk Mode • Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</span>
-        <h1 className="wm-title">Learn by listening.<br /><span className="wm-accent">Anytime, anywhere.</span></h1>
-        <p className="wm-subtitle">Audio-first revision for learning on the go.</p>
+  return (
+    <div className="wk">
+      <NebulaParticles starCount={120} nebulaCount={4} />
+
+      <div className="wk-top">
+        <span className="wk-pill">🎧 Walk Mode • Question {Math.min(index + 1, cards.length)}/{cards.length || 0}</span>
+        <h1 className="wk-h1">Learn by listening.<br /><em>Anytime, anywhere.</em></h1>
+        <p className="wk-sub">Audio-first revision for learning on the go.</p>
       </div>
 
-      {/* Main card */}
-      <section className="wm-card">
-        {/* Headphones orb */}
-        <div className="wm-orb-wrap">
-          <div className="wm-wave-bg">
-            {Array.from({ length: 48 }).map((_, i) => {
-              const center = 24
-              const dist = Math.abs(i - center) / center
-              const h = Math.max(0.15, 1 - dist * dist)
-              return <span key={i} className="wm-wave-bar" style={{ '--h': h, '--delay': `${i * 0.035}s` }} />
-            })}
-          </div>
-          <div className="wm-orb">
-            <Headphones size={52} />
-            <div className="wm-ring wm-ring-1" />
-            <div className="wm-ring wm-ring-2" />
-            <div className="wm-ring wm-ring-3" />
-          </div>
+      <div className="wk-mid">
+        <div className="wk-waves">
+          {bars.map((b, i) => <span key={i} className="wk-bar" style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
         </div>
+        <div className="wk-orb">
+          <Headphones size={46} />
+          <i className="wk-ring r1" />
+          <i className="wk-ring r2" />
+        </div>
+      </div>
 
-        {/* Question */}
+      <div className="wk-bottom">
         {card ? (
-          <div className="wm-question">
-            <small className="wm-q-label">Your question</small>
+          <div className="wk-q">
+            <small>Your question</small>
             <h2>{card.question}</h2>
-            <p className="wm-meta">{card.difficulty} • {card.topic}</p>
+            <p>{card.difficulty} • {card.topic}</p>
           </div>
         ) : (
-          <div className="wm-question">
+          <div className="wk-q">
             <h2>No walk cards due.</h2>
-            <p className="wm-meta">Add notes and generate cards to use Walk Mode</p>
+            <p>Add notes and generate cards to use Walk Mode</p>
           </div>
         )}
 
-        {showAnswer && card ? <div className="wm-answer"><p>{card.answer}</p></div> : null}
+        {showAnswer && card ? <div className="wk-ans"><p>{card.answer}</p></div> : null}
 
-        {/* Actions */}
-        <div className="wm-actions">
-          <button className="btn btn-secondary wm-btn" onClick={() => speak(`Question ${index + 1}. ${card?.question || ''}`)}><Volume2 size={18} /> Speak</button>
-          <button className="btn btn-secondary wm-btn" onClick={() => speak(card?.answer || '')}><Repeat2 size={18} /> Repeat Answer</button>
-          <button className="btn btn-secondary wm-btn"><Mic size={18} /> Listen</button>
-          <button className="btn btn-primary wm-btn wm-show" onClick={() => setShowAnswer(true)}><Eye size={18} /> Show Answer</button>
+        <div className="wk-btns">
+          <button className="btn btn-secondary" onClick={() => speak(`Question ${index + 1}. ${card?.question || ''}`)}><Volume2 size={16} /> Speak</button>
+          <button className="btn btn-secondary" onClick={() => speak(card?.answer || '')}><Repeat2 size={16} /> Repeat Answer</button>
+          <button className="btn btn-secondary"><Mic size={16} /> Listen</button>
+          <button className="btn btn-primary wk-show" onClick={() => setShowAnswer(true)}><Eye size={16} /> Show Answer</button>
         </div>
 
         {showAnswer && card ? (
-          <div className="wm-rating">
-            <button className="btn wm-rate-bad" onClick={() => rate('forgot')}>I forgot</button>
-            <button className="btn wm-rate-good" onClick={() => rate('good')}>I knew it</button>
+          <div className="wk-rate">
+            <button className="btn wk-forgot" onClick={() => rate('forgot')}>I forgot</button>
+            <button className="btn wk-knew" onClick={() => rate('good')}>I knew it</button>
           </div>
         ) : null}
 
-        <p className="wm-hint">🎧 Use headphones for the best experience</p>
-      </section>
+        <small className="wk-hint">🎧 Use headphones for the best experience</small>
+      </div>
     </div>
   )
 }

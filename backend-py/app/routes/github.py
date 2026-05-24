@@ -178,7 +178,7 @@ async def github_callback(
     await db.flush()
 
     # 5. Redirect to frontend success page
-    redirect_url = f"{settings.frontend_url.rstrip('/')}/#/settings?github=connected"
+    redirect_url = f"{settings.frontend_url.rstrip('/')}/problems?github=connected"
     return RedirectResponse(url=redirect_url)
 
 

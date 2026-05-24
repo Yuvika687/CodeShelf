@@ -183,6 +183,24 @@ def build_card_blocks(cards: list[RevisionCard]) -> list[dict]:
                 "id": card.id,
                 "question": card.question,
                 "topic": card.topic,
+                "remembered_url": action_url(
+                    "/api/email/review",
+                    {
+                        "token": create_email_token(
+                            {"sub": card.user_id, "card_id": card.id, "rating": "good", "type": "email_review"},
+                            hours=24,
+                        )
+                    },
+                ),
+                "forgot_url": action_url(
+                    "/api/email/review",
+                    {
+                        "token": create_email_token(
+                            {"sub": card.user_id, "card_id": card.id, "rating": "forgot", "type": "email_review"},
+                            hours=24,
+                        )
+                    },
+                ),
                 "options": [
                     {
                         **option,
@@ -320,6 +338,8 @@ def render_daily_text(ctx: dict) -> str:
     ]
     for card in ctx["cards"]:
         lines.append(f"Q{card['index']}: {card['question']}")
+        lines.append(f"I remembered: {card['remembered_url']}")
+        lines.append(f"I forgot: {card['forgot_url']}")
         for option in card["options"]:
             lines.append(f"{option['label']}. {option['text']} - {option['url']}")
         lines.append("")
@@ -343,6 +363,10 @@ def render_daily_html(ctx: dict) -> str:
           <td style="padding:18px 0;border-top:1px solid #edf0f5;">
             <p style="margin:0 0 6px;color:#647084;font-size:13px;">Q{card['index']} · {html.escape(card['topic'])}</p>
             <h3 style="margin:0 0 10px;color:#172033;font-size:18px;line-height:1.35;">{html.escape(card['question'])}</h3>
+            <div style="margin:0 0 10px;">
+              <a href="{html.escape(card['remembered_url'])}" style="display:inline-block;margin:0 8px 8px 0;padding:10px 12px;border-radius:8px;color:#ffffff;text-decoration:none;background:#16a34a;font-weight:bold;">I remembered</a>
+              <a href="{html.escape(card['forgot_url'])}" style="display:inline-block;margin:0 8px 8px 0;padding:10px 12px;border-radius:8px;color:#ffffff;text-decoration:none;background:#dc2626;font-weight:bold;">I forgot</a>
+            </div>
             <div>{options}</div>
           </td>
         </tr>
@@ -566,6 +590,21 @@ async def answer_from_email(token: str = Query(...), selected: str = Query(...),
     if not saved:
         result = "missing"
     return RedirectResponse(frontend_url("/revision/today", {"from": "email", "result": result}), status_code=302)
+
+
+@router.get("/review")
+async def review_from_email(token: str = Query(...), db: AsyncSession = Depends(get_db)):
+    payload = decode_email_token(token, "email_review")
+    if not payload:
+        return RedirectResponse(frontend_url("/revision/today", {"from": "email", "result": "invalid"}), status_code=302)
+    rating = str(payload.get("rating", "good")).lower()
+    if rating not in {"forgot", "hard", "good", "easy"}:
+        rating = "good"
+    saved = await apply_email_review(db, str(payload["sub"]), str(payload["card_id"]), rating)
+    return RedirectResponse(
+        frontend_url("/revision/today", {"from": "email", "result": "saved" if saved else "missing", "rating": rating}),
+        status_code=302,
+    )
 
 
 @router.get("/unsubscribe")

@@ -38,6 +38,7 @@ export default function Upload() {
   const [status, setStatus] = useState('')
   const [importText, setImportText] = useState('')
   const [importHints, setImportHints] = useState([])
+  const [importedCards, setImportedCards] = useState([])
   const [form, setForm] = useState({
     title: '',
     content: '',
@@ -74,19 +75,20 @@ export default function Upload() {
 
   function importFromLlm() {
     setError('')
+    setImportedCards([])
     const parsed = parseLlmNote(importText)
     if (!parsed) {
       setError('Could not parse the LLM output. Ask the model to return valid JSON only, then paste it again.')
       return
     }
     const cards = Array.isArray(parsed.revision_cards) ? parsed.revision_cards : []
-    const cardAppendix = cards.length
-      ? `\n\n## Revision Cards\n${cards.map((card, index) => `- Q${index + 1}: ${card.question || ''}\n  A: ${card.answer || ''}`).join('\n')}`
-      : ''
+    const cleanCards = cards
+      .map((card) => ({ question: cleanText(card.question), answer: cleanText(card.answer), card_type: cleanText(card.card_type) || 'recall' }))
+      .filter((card) => card.question && card.answer)
     setForm((current) => ({
       ...current,
       title: cleanText(parsed.title) || current.title,
-      content: `${cleanText(parsed.content) || current.content}${cardAppendix}`,
+      content: cleanText(parsed.content) || current.content,
       note_type: normalizeChoice(parsed.note_type, noteTypes, current.note_type),
       topic: cleanText(parsed.topic) || current.topic,
       subtopic: cleanText(parsed.subtopic) || current.subtopic,
@@ -97,19 +99,20 @@ export default function Upload() {
       language: cleanText(parsed.language) || current.language,
       summary: cleanText(parsed.summary) || current.summary,
     }))
+    setImportedCards(cleanCards)
     if (Array.isArray(parsed.tags) && parsed.tags.length) {
       setTags([...new Set([...tags, ...parsed.tags.map(cleanText).filter(Boolean)])])
     }
     const hints = qualityHints(parsed, cards)
     setImportHints(hints)
-    setStatus(hints.length ? 'Imported with quality suggestions below.' : 'Imported structured note into the form.')
+    setStatus(hints.length ? `Imported ${cleanCards.length} card${cleanCards.length === 1 ? '' : 's'} with quality suggestions below.` : `Imported structured note with ${cleanCards.length} revision card${cleanCards.length === 1 ? '' : 's'}.`)
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
     try {
-      const data = await notesApi.create({ ...form, tags })
+      const data = await notesApi.create({ ...form, tags, revision_cards: importedCards })
       navigate(`/note/${data.note.id}`)
     } catch (err) {
       setError(err.message)
@@ -167,6 +170,7 @@ export default function Upload() {
               <button type="button" className="btn btn-primary compact" onClick={importFromLlm}><Sparkles size={14} /> Import</button>
             </div>
             <textarea className="input mono" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste CodeShelf JSON from ChatGPT, Gemini, DeepSeek, or another LLM..." />
+            {importedCards.length ? <p className="recall-answer">{importedCards.length} imported cards will be saved as real revision cards.</p> : null}
             {importHints.length ? <div className="import-quality">{importHints.map((hint) => <span key={hint}>{hint}</span>)}</div> : null}
           </section>
           <section className="card"><h3>Good Revision Inputs</h3><ul className="check-list"><li>Write the mistake or rule plainly</li><li>Add the exact code or command</li><li>Use topics you want to filter later</li><li>Let cards be generated automatically</li></ul></section>
