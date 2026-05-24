@@ -1,0 +1,63 @@
+{
+  "name": "codeshelf-vscode",
+  "displayName": "CodeShelf Practice Sync",
+  "description": "Save local practice files to CodeShelf and optionally commit them to GitHub.",
+  "version": "0.1.0",
+  "publisher": "codeshelf",
+  "engines": {
+    "vscode": "^1.88.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:codeshelf.connect",
+    "onCommand:codeshelf.saveCurrentFile",
+    "onCommand:codeshelf.commitCurrentFile"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codeshelf.connect",
+        "title": "CodeShelf: Connect"
+      },
+      {
+        "command": "codeshelf.saveCurrentFile",
+        "title": "CodeShelf: Save Current File"
+      },
+      {
+        "command": "codeshelf.commitCurrentFile",
+        "title": "CodeShelf: Commit Current File to GitHub"
+      }
+    ],
+    "configuration": {
+      "title": "CodeShelf",
+      "properties": {
+        "codeshelf.apiBase": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000/api",
+          "description": "CodeShelf API base URL."
+        },
+        "codeshelf.jwt": {
+          "type": "string",
+          "default": "",
+          "description": "CodeShelf JWT token."
+        },
+        "codeshelf.githubToken": {
+          "type": "string",
+          "default": "",
+          "description": "GitHub token with Contents read/write access."
+        },
+        "codeshelf.githubRepo": {
+          "type": "string",
+          "default": "",
+          "description": "Target GitHub repo, for example owner/repo."
+        },
+        "codeshelf.githubBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "Target GitHub branch."
+        }
+      }
+    }
+  }
+}

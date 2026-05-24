@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "CodeShelf Capture",
+  "description": "Capture LeetCode and web practice into CodeShelf, then optionally commit it to GitHub.",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://leetcode.com/*", "https://api.github.com/*", "https://*.onrender.com/*", "https://*.yogender1.me/*", "http://127.0.0.1:*/*"],
+  "action": {
+    "default_title": "Save to CodeShelf",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

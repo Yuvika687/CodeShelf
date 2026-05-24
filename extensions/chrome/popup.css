@@ -1,0 +1,132 @@
+:root {
+  --bg: #0b1020;
+  --panel: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.13);
+  --text: #f8f7ff;
+  --muted: #aeb5cc;
+  --primary: #7c5cff;
+  --accent: #58d5cc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 390px;
+  margin: 0;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(88, 213, 204, 0.18), transparent 180px),
+    radial-gradient(circle at 0% 20%, rgba(124, 92, 255, 0.24), transparent 190px),
+    var(--bg);
+  color: var(--text);
+  font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+main {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--primary), #5f76ff);
+  font-weight: 900;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 18px;
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  font-size: 13px;
+}
+
+p,
+label,
+.preview {
+  color: var(--muted);
+}
+
+.panel {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(14px);
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+input,
+button,
+a {
+  min-height: 38px;
+  border-radius: 12px;
+  font: inherit;
+}
+
+input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  outline: none;
+  padding: 0 10px;
+}
+
+button,
+a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: linear-gradient(135deg, var(--primary), #5f76ff);
+  color: #fff;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:nth-of-type(n + 2) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.preview {
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+#status {
+  color: var(--accent);
+  font-weight: 800;
+  min-height: 20px;
+}

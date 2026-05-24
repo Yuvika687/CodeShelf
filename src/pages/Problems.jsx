@@ -1,4 +1,4 @@
-import { GitBranch, Search } from 'lucide-react'
+import { Download, GitBranch, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { githubApi, problemsApi } from '../api/client.js'
@@ -16,6 +16,9 @@ export default function Problems() {
   useEffect(() => { load() }, [filters])
   const load = () => problemsApi.list(filters).then((data) => setProblems(data.problems || [])).catch((err) => setError(err.message))
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
+  const solved = problems.filter((problem) => problem.status === 'solved').length
+  const revisiting = problems.filter((problem) => problem.status === 'revisit').length
+  const weak = problems.filter((problem) => problem.status === 'weak').length
 
   async function submit(event) {
     event.preventDefault()
@@ -32,8 +35,17 @@ export default function Problems() {
   }
 
   return (
-    <div className="page">
-      <PageTitle title="Problem Tracker" subtitle="Track solved, weak, revisit, and due coding problems." />
+    <div className="page problems-page">
+      <section className="problem-hero">
+        <div><p className="eyebrow">Git-backed practice</p><h1>Problem Tracker</h1><p>Track solved, weak, revisit, and due coding problems with an optional GitHub commit pipeline.</p></div>
+        <div className="repo-visual" aria-hidden="true"><GitBranch size={42} /></div>
+      </section>
+      <div className="problem-stat-strip">
+        <span>Total <strong>{problems.length}</strong></span>
+        <span>Solved <strong>{solved}</strong></span>
+        <span>Revisiting <strong>{revisiting}</strong></span>
+        <span>Weak <strong>{weak}</strong></span>
+      </div>
       <div className="toolbar">
         <label className="search-field"><Search size={16} /><input value={filters.topic} onChange={(e) => setFilters({ ...filters, topic: e.target.value })} placeholder="Filter topic..." /></label>
         <select className="input compact" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}><option value="">All status</option><option>not_started</option><option>solved</option><option>revisit</option><option>weak</option></select>
@@ -66,12 +78,17 @@ export default function Problems() {
           <h2><GitBranch size={18} /> GitHub Save Pipeline</h2>
           <p className="muted">Saving a problem now also attempts a backend GitHub commit into platform/topic/pattern folders. Configure the backend with GITHUB_TOKEN, GITHUB_REPO, and GITHUB_BRANCH.</p>
           <small>No contest scraping or auto-submit logic is included. The pipeline only commits what you intentionally save.</small>
+          <div className="pipeline-steps"><span>Save</span><span>Commit</span><span>Folder</span><span>Repo</span></div>
+          <div className="extension-downloads">
+            <a className="btn btn-secondary compact" href="/downloads/codeshelf-chrome-extension.zip"><Download size={14} /> Chrome Extension</a>
+            <a className="btn btn-secondary compact" href="/downloads/codeshelf-vscode-extension.zip"><Download size={14} /> VS Code Extension</a>
+          </div>
         </aside>
         <section className="card">
           <h2>Problems</h2>
           <div className="list-stack">
             {problems.map((problem) => <Link className="revision-row" to={`/problems/${problem.id}`} key={problem.id}><span>{problem.title}</span><small>{problem.topic} / {problem.pattern || 'No pattern'} / {problem.status}</small></Link>)}
-            {!problems.length ? <p className="muted">No problems tracked yet.</p> : null}
+            {!problems.length ? <div className="visual-empty"><div className="empty-illustration"><GitBranch size={30} /></div><h3>Track your first coding problem</h3><p>Save solved, weak, and revisit problems with the GitHub commit pipeline.</p></div> : null}
           </div>
         </section>
       </div>

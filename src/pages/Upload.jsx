@@ -117,8 +117,8 @@ export default function Upload() {
   }
 
   return (
-    <div className="page">
-      <PageTitle title="Add Learning Material" subtitle="Capture what you learned, then turn it into future recall." />
+    <div className="page add-note-page">
+      <section className="writing-hero"><div><p className="eyebrow">Writing studio</p><h1>Add Learning Material</h1><p>Capture what you learned, then turn it into future recall.</p></div><div className="writing-visual" aria-hidden="true"><Brain size={38} /></div></section>
       <div className="form-grid">
         <form className="card form-card" onSubmit={handleSubmit}>
           <Field label="Title *"><input className="input" value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="Container With Most Water pointer rule" /></Field>
@@ -129,7 +129,10 @@ export default function Upload() {
           </div>
           <Field label="Subtopic / Pattern"><input className="input" value={form.subtopic} onChange={(e) => update('subtopic', e.target.value)} placeholder="Two pointers, joins, Docker volumes..." /></Field>
           <Field label="Content *">
-            <CodeMirror value={form.content} height="280px" theme={vscodeDark} extensions={[javascript({ jsx: true }), python(), sql(), cpp()]} onChange={(val) => update('content', val)} />
+            <div className="editor-shell">
+              <div className="editor-toolbar"><span>{form.language || 'text'}</span><span>Format</span><span>{form.content.length} chars</span></div>
+              <CodeMirror value={form.content} height="280px" theme={vscodeDark} extensions={[javascript({ jsx: true }), python(), sql(), cpp()]} onChange={(val) => update('content', val)} />
+            </div>
           </Field>
           <div className="two-col">
             <Field label="Source"><input className="input" value={form.source} onChange={(e) => update('source', e.target.value)} placeholder="LeetCode, docs, course..." /></Field>
@@ -154,7 +157,8 @@ export default function Upload() {
             <button className="btn btn-primary"><Brain size={16} /> Save and Generate Cards</button>
           </div>
         </form>
-        <aside className="side-stack">
+        <aside className="side-stack assistant-rail">
+          <section className="assistant-orb-panel"><Sparkles size={24} /><h3>AI Card Preview</h3><p>Paste structured output, summarize content, then save to generate cards from your real note.</p></section>
           <section className="card llm-importer">
             <h3><FileJson size={18} /> LLM Note Importer</h3>
             <p className="muted">Use any LLM to structure raw learning material, then paste the JSON here to fill the form.</p>

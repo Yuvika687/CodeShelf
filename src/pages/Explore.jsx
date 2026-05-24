@@ -1,4 +1,4 @@
-import { BookOpen, Code, Database, FileText, Search } from 'lucide-react'
+import { BookOpen, Code, Database, FileText, Plus, Search, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { notesApi } from '../api/client.js'
@@ -29,9 +29,9 @@ export default function Explore() {
   }, [search, noteType, topic])
 
   return (
-    <div className="page">
+    <div className="page library-page">
       <PageHeader title="Knowledge Library" subtitle="Structured coding memory: concepts, problems, mistakes, commands, interviews, and quick recall cards." />
-      <div className="toolbar">
+      <div className="toolbar command-row">
         <label className="search-field"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search your memory..." /></label>
         <select className="input compact" value={topic} onChange={(event) => setTopic(event.target.value)}>
           <option value="">All Topics</option><option>DSA</option><option>SQL</option><option>DevOps</option><option>System Design</option><option>JavaScript</option>
@@ -39,9 +39,23 @@ export default function Explore() {
       </div>
       <Tabs items={filters} active={noteType || 'All'} onChange={(item) => setNoteType(item === 'All' ? '' : item)} />
       {error ? <p className="form-error">{error}</p> : null}
-      {loading ? <p className="muted">Loading library...</p> : <NoteGrid notes={notes} />}
-      {!loading && !notes.length ? <p className="muted empty-state">No notes found. Add learning material to start your revision loop.</p> : null}
+      {loading ? <div className="skeleton-grid"><span /><span /><span /></div> : <NoteGrid notes={notes} />}
+      {!loading && !notes.length ? <LibraryEmpty /> : null}
     </div>
+  )
+}
+
+function LibraryEmpty() {
+  return (
+    <section className="visual-empty library-empty">
+      <div className="empty-illustration cards"><BookOpen size={34} /><Sparkles size={18} /></div>
+      <h2>Your coding memory is empty</h2>
+      <p>Add one DSA, SQL, ML, or DevOps note and CodeShelf will turn it into revision cards.</p>
+      <div className="form-actions">
+        <Link className="btn btn-primary" to="/add-note"><Plus size={16} /> Add first note</Link>
+        <Link className="btn btn-secondary" to="/add-note"><Sparkles size={16} /> Import from AI</Link>
+      </div>
+    </section>
   )
 }
 

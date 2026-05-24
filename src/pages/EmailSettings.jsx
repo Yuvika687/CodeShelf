@@ -2,7 +2,7 @@ import { Clock, Mail, Palette, Send, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { emailApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
-import { Field, PageTitle } from './Upload.jsx'
+import { Field } from './Upload.jsx'
 
 const styleOptions = [
   { value: 'focused', label: 'Focused' },
@@ -54,7 +54,7 @@ export default function EmailSettings() {
 
   return (
     <div className="page email-studio">
-      <PageTitle title="Email Studio" subtitle="Verified inbox reminders, tuned to how you revise." />
+      <section className="email-hero"><div><p className="eyebrow">Inbox coach</p><h1>Email Studio</h1><p>Verified inbox reminders, tuned to how you revise.</p></div><div className="mail-visual" aria-hidden="true"><Mail size={40} /></div></section>
       {!user?.email_verified ? (
         <section className="verify-banner">
           <ShieldCheck size={20} />
@@ -103,7 +103,7 @@ export default function EmailSettings() {
           </div>
         </section>
         <section className="email-preview-device">
-          <div className="device-bar"><Clock size={14} /> {prefs.email_time} · {prefs.timezone}</div>
+          <div className="device-bar"><Clock size={14} /> {prefs.email_time} / {prefs.timezone}</div>
           {preview ? (
             <article>
               <strong>{preview.subject}</strong>
