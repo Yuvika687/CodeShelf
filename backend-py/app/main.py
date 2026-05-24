@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 from app.config import get_settings
 from app.database import engine
@@ -85,6 +85,11 @@ app.include_router(extension.router)
 @app.get("/")
 async def root():
     return {"ok": True, "message": "CodeShelf API is running", "tagline": "Never forget what you already learned."}
+
+
+@app.get("/extension-connect")
+async def extension_connect_redirect():
+    return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/extension-connect", status_code=302)
 
 
 @app.get("/api/health")
