@@ -31,20 +31,20 @@ export default function Login() {
 }
 
 export function AuthShell({ title, subtitle, children }) {
-  const [motion, setMotion] = useState({ x: 50, y: 50 })
   const handleMove = (event) => {
-    const bounds = event.currentTarget.getBoundingClientRect()
-    setMotion({
-      x: ((event.clientX - bounds.left) / bounds.width) * 100,
-      y: ((event.clientY - bounds.top) / bounds.height) * 100,
-    })
+    const mainEl = event.currentTarget
+    const bounds = mainEl.getBoundingClientRect()
+    const mx = ((event.clientX - bounds.left) / bounds.width) * 100
+    const my = ((event.clientY - bounds.top) / bounds.height) * 100
+    mainEl.style.setProperty('--mx', `${mx}%`)
+    mainEl.style.setProperty('--my', `${my}%`)
   }
 
   return (
     <main
       className="auth-page luxury-auth"
       onPointerMove={handleMove}
-      style={{ '--mx': `${motion.x}%`, '--my': `${motion.y}%` }}
+      style={{ '--mx': `50%`, '--my': `50%` }}
     >
       <section className="auth-story">
         <div className="auth-ribbons" aria-hidden="true">
@@ -77,3 +77,4 @@ export function AuthShell({ title, subtitle, children }) {
     </main>
   )
 }
+
