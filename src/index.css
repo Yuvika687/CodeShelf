@@ -3756,12 +3756,10 @@ progress::-moz-progress-bar {
 
 .wk-wave-left {
   justify-content: flex-end;
-  padding-right: 8px;
 }
 
 .wk-wave-right {
   justify-content: flex-start;
-  padding-left: 8px;
 }
 
 .wk-bar {
@@ -3801,27 +3799,21 @@ progress::-moz-progress-bar {
     0 0 40px rgba(139, 92, 246, .5),
     0 0 80px rgba(139, 92, 246, .18),
     inset 0 0 22px rgba(255, 255, 255, .08);
-  animation: cmdCorePulse 3s ease-in-out infinite;
+  animation: orbPulse 3s ease-in-out infinite;
 }
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 60px rgba(139, 92, 246, .7), 0 0 120px rgba(139, 92, 246, .3), inset 0 0 30px rgba(255, 255, 255, .15);
+  }
+}
+
 
 
 .wk-ring {
-  position: absolute;
-  border: 1.2px solid rgba(139, 92, 246, .2);
-  border-radius: 50%;
-  pointer-events: none;
-  animation: ringPulse 2.6s ease-in-out infinite;
-}
-
-.wk-ring.r1 {
-  inset: -14px;
-}
-
-.wk-ring.r2 {
-  inset: -30px;
-  animation-delay: .5s;
-  border-color: rgba(98, 213, 200, .15);
-  border-style: dashed;
+  display: none;
 }
 
 .wk-bottom {
@@ -5153,7 +5145,7 @@ body.light-theme .cursor-glow-bg { display: none; }
   width: 90px;
   height: 90px;
   border-radius: 50%;
-  animation: cmdCorePulse 3s ease-in-out infinite;
+  animation: orbPulse 3s ease-in-out infinite;
 }
 
 .writing-visual {
@@ -5405,7 +5397,7 @@ body.light-theme .page-header h1 {
     radial-gradient(circle, rgba(98,213,200,.35), rgba(139,92,246,.08) 50%, transparent 72%);
   box-shadow: 0 0 40px rgba(98,213,200,.18);
   color: #fff;
-  animation: cmdCorePulse 3s ease-in-out infinite;
+  animation: orbPulse 3s ease-in-out infinite;
 }
 
 .email-preview-empty strong {
