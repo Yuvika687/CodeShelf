@@ -6,13 +6,13 @@ from urllib.parse import urlencode
 
 import httpx
 import firebase_admin
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from firebase_admin import auth as firebase_auth, credentials
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
+from app.database import async_session_factory, get_db
 from app.deps import get_current_user
 from app.jwt_utils import create_access_token
 from app.models import EmailLog, User
@@ -87,6 +87,19 @@ async def send_welcome_email(db: AsyncSession, user: User) -> None:
     await send_auth_email(db, user, subject, text, html_body, "welcome")
 
 
+async def send_welcome_email_after_response(user_id: str) -> None:
+    try:
+        async with async_session_factory() as db:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return
+            await send_welcome_email(db, user)
+            await db.commit()
+    except Exception as exc:
+        print(f"CodeShelf welcome email failed for user {user_id}: {exc}")
+
+
 def init_firebase_admin() -> None:
     if firebase_admin._apps:
         return
@@ -98,7 +111,7 @@ def init_firebase_admin() -> None:
 
 
 @router.post("/google")
-async def google_login(request: Request, db: AsyncSession = Depends(get_db)):
+async def google_login(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     content_type = request.headers.get("content-type", "")
     if content_type.startswith("text/plain"):
         id_token = (await request.body()).decode("utf-8").strip()
@@ -139,7 +152,7 @@ async def google_login(request: Request, db: AsyncSession = Depends(get_db)):
         user.auth_provider = "google"
         user.firebase_uid = user.firebase_uid or firebase_uid
     if is_new:
-        await send_welcome_email(db, user)
+        background_tasks.add_task(send_welcome_email_after_response, user.id)
     return {"token": create_access_token(user.id), "user": user_out(user)}
 
 
