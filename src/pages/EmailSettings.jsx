@@ -5,9 +5,9 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { Field } from './Upload.jsx'
 
 const styleOptions = [
-  { value: 'focused', label: 'Focused' },
-  { value: 'calm', label: 'Calm' },
-  { value: 'coach-like', label: 'Coach' },
+  { value: 'focused', label: '🎯 Focused' },
+  { value: 'calm', label: '🧘 Calm' },
+  { value: 'coach-like', label: '🔥 Coach' },
 ]
 
 export default function EmailSettings() {
@@ -54,13 +54,22 @@ export default function EmailSettings() {
 
   return (
     <div className="page email-studio">
-      <section className="email-hero"><div><p className="eyebrow">Inbox coach</p><h1>Email Studio</h1><p>Verified inbox reminders, tuned to how you revise.</p></div><div className="mail-visual" aria-hidden="true"><Mail size={40} /></div></section>
+      <section className="email-hero">
+        <div>
+          <p className="eyebrow">Inbox coach</p>
+          <h1>Email Studio</h1>
+          <p>Verified inbox reminders, tuned to how you revise.</p>
+        </div>
+        <div className="mail-visual" aria-hidden="true"><Mail size={40} /></div>
+      </section>
+
       {!user?.email_verified ? (
         <section className="verify-banner">
           <ShieldCheck size={20} />
           <div><strong>Google verification required.</strong><span>CodeShelf sends reminders only to the verified email returned by Google sign-in.</span></div>
         </section>
       ) : null}
+
       <div className="email-layout">
         <section className="card form-card email-control-panel">
           <h2><Mail size={18} /> Delivery</h2>
@@ -102,19 +111,25 @@ export default function EmailSettings() {
             <button className="btn btn-secondary" onClick={sendTest}><Send size={16} /> Send Test</button>
           </div>
         </section>
-        <section className="email-preview-device">
-          <div className="device-bar"><Clock size={14} /> {prefs.email_time} / {prefs.timezone}</div>
+
+        {/* Dark-themed email preview card */}
+        <section className="email-preview-card">
+          <div className="email-preview-header">
+            <Clock size={14} />
+            <span>{prefs.email_time} / {prefs.timezone}</span>
+            <span className="email-preview-dot" />
+          </div>
           {preview ? (
-            <article>
-              <strong>{preview.subject}</strong>
-              <pre>{preview.body}</pre>
-            </article>
+            <div className="email-preview-body">
+              <strong className="email-preview-subject">{preview.subject}</strong>
+              <pre className="email-preview-text">{preview.body}</pre>
+            </div>
           ) : (
-            <article className="empty-preview">
-              <Mail size={28} />
-              <strong>Your reminder preview appears here.</strong>
-              <span>Generate one after saving your style and topic preferences.</span>
-            </article>
+            <div className="email-preview-empty">
+              <div className="email-preview-icon"><Mail size={32} /></div>
+              <strong>Email Preview</strong>
+              <span>Click "Preview" after configuring your style and topic preferences to see your daily reminder here.</span>
+            </div>
           )}
         </section>
       </div>

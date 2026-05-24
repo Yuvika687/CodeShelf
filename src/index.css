@@ -3732,26 +3732,36 @@ progress::-moz-progress-bar {
 .wk-mid {
   position: relative;
   flex: 1 1 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   min-height: 140px;
   max-height: 280px;
 }
 
-.wk-waves {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(85%, 480px);
-  height: 90px;
+.wk-visualizer {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0;
+}
+
+.wk-wave-half {
+  display: flex;
+  align-items: center;
   gap: 2.5px;
-  pointer-events: none;
-  z-index: 1;
+  height: 90px;
+}
+
+.wk-wave-left {
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+
+.wk-wave-right {
+  justify-content: flex-start;
+  padding-left: 8px;
 }
 
 .wk-bar {
@@ -3763,13 +3773,11 @@ progress::-moz-progress-bar {
 }
 
 @keyframes wkPulse {
-
   0%,
   100% {
     height: 6px;
     opacity: .2;
   }
-
   50% {
     height: calc(55px * var(--h));
     opacity: calc(.15 + .45 * var(--h));
@@ -3779,7 +3787,7 @@ progress::-moz-progress-bar {
 .wk-orb {
   position: relative;
   z-index: 2;
-  grid-area: 1 / 1;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 110px;
@@ -3795,6 +3803,7 @@ progress::-moz-progress-bar {
     inset 0 0 22px rgba(255, 255, 255, .08);
   animation: cmdCorePulse 3s ease-in-out infinite;
 }
+
 
 .wk-ring {
   position: absolute;
@@ -5305,4 +5314,109 @@ body.light-theme .page-header h1 {
   -webkit-text-fill-color: unset;
   background: none;
   color: var(--text-strong);
+}
+
+/* ═══════════════════════════════════════
+   EMAIL PREVIEW — Dark Theme Card
+   ═══════════════════════════════════════ */
+
+.email-preview-card {
+  position: sticky;
+  top: 80px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.04), transparent 40%),
+    var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.email-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.email-preview-dot {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(16,185,129,.4);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+.email-preview-body {
+  padding: 20px;
+}
+
+.email-preview-subject {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+}
+
+.email-preview-text {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.email-preview-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 60px 28px;
+  text-align: center;
+}
+
+.email-preview-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 22%, rgba(255,255,255,.3), transparent 30%),
+    radial-gradient(circle, rgba(98,213,200,.35), rgba(139,92,246,.08) 50%, transparent 72%);
+  box-shadow: 0 0 40px rgba(98,213,200,.18);
+  color: #fff;
+  animation: cmdCorePulse 3s ease-in-out infinite;
+}
+
+.email-preview-empty strong {
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.email-preview-empty span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  max-width: 280px;
 }

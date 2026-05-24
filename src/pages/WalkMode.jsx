@@ -42,13 +42,21 @@ export default function WalkMode() {
       </div>
 
       <div className="wk-mid">
-        <div className="wk-waves">
-          {bars.map((b, i) => <span key={i} className="wk-bar" style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
-        </div>
-        <div className="wk-orb">
-          <Headphones size={46} />
-          <i className="wk-ring r1" />
-          <i className="wk-ring r2" />
+        <div className="wk-visualizer">
+          {/* Left wave bars */}
+          <div className="wk-wave-half wk-wave-left">
+            {bars.slice(0, 24).map((b, i) => <span key={i} className="wk-bar" style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
+          </div>
+          {/* Center orb */}
+          <div className="wk-orb">
+            <Headphones size={42} />
+            <i className="wk-ring r1" />
+            <i className="wk-ring r2" />
+          </div>
+          {/* Right wave bars */}
+          <div className="wk-wave-half wk-wave-right">
+            {bars.slice(24).map((b, i) => <span key={i} className="wk-bar" style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
+          </div>
         </div>
       </div>
 
