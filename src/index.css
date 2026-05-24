@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   color-scheme: dark;
@@ -92,6 +92,10 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   line-height: 1.6;
   overflow-x: hidden;
+}
+
+@media (hover: hover) {
+  html, body, body * { cursor: none !important; }
 }
 
 body::before {
@@ -2842,10 +2846,7 @@ progress::-moz-progress-bar {
 
 .cmd .nebula-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; pointer-events: none; z-index: 0; opacity: .6; }
 
-.cmd-scan {
-  position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: repeating-linear-gradient(to bottom, transparent 0, transparent 3px, rgba(139,92,246,.015) 3px, rgba(139,92,246,.015) 6px);
-}
+.cmd-scan { display: none; }
 
 .cmd > * { position: relative; z-index: 2; }
 
@@ -3309,42 +3310,59 @@ progress::-moz-progress-bar {
   text-align: center;
 }
 
-.wm-orb-wrap { position: relative; display: flex; justify-content: center; align-items: center; min-height: 150px; width: 100%; }
+.wm-orb-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 180px;
+  overflow: visible;
+}
 
 .wm-orb {
-  position: relative; z-index: 1;
+  position: relative; z-index: 2;
   display: grid; place-items: center;
-  width: 110px; height: 110px;
+  width: 120px; height: 120px;
   border-radius: 50%;
   color: #fff;
   background:
     radial-gradient(circle at 34% 26%, rgba(255,255,255,.4), transparent 40%),
     radial-gradient(circle, rgba(139,92,246,.65), rgba(86,70,230,.15) 55%, transparent 70%);
-  box-shadow: 0 0 45px rgba(139,92,246,.5), 0 0 90px rgba(139,92,246,.2), inset 0 0 28px rgba(255,255,255,.1);
+  box-shadow: 0 0 50px rgba(139,92,246,.55), 0 0 100px rgba(139,92,246,.25), inset 0 0 28px rgba(255,255,255,.1);
   animation: cmdCorePulse 3s ease-in-out infinite;
 }
 
 .wm-ring { position: absolute; border: 1.5px solid rgba(139,92,246,.22); border-radius: 50%; animation: ringPulse 2.4s ease-in-out infinite; }
-.wm-ring-1 { inset: -14px; }
-.wm-ring-2 { inset: -30px; animation-delay: .4s; border-color: rgba(98,213,200,.18); }
-.wm-ring-3 { inset: -46px; animation-delay: .8s; border-color: rgba(139,92,246,.1); border-style: dashed; }
+.wm-ring-1 { inset: -16px; }
+.wm-ring-2 { inset: -34px; animation-delay: .4s; border-color: rgba(98,213,200,.18); }
+.wm-ring-3 { inset: -52px; animation-delay: .8s; border-color: rgba(139,92,246,.1); border-style: dashed; }
 
 .wm-wave-bg {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center; gap: 2.5px;
-  opacity: .35; pointer-events: none;
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90%, 600px);
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  opacity: .4;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .wm-wave-bar {
   width: 2.5px; border-radius: 999px;
   background: linear-gradient(180deg, var(--primary), var(--accent));
-  animation: wmWave 1.4s ease-in-out infinite;
+  animation: wmWave 1.6s ease-in-out infinite;
   animation-delay: var(--delay);
 }
 
 @keyframes wmWave {
-  0%,100% { height: 10px; opacity: .3; }
-  50% { height: calc(25px + var(--i) * 0.7px); opacity: .65; }
+  0%,100% { height: 8px; opacity: .25; }
+  50% { height: calc(50px * var(--h)); opacity: calc(.2 + .5 * var(--h)); }
 }
 
 .wm-question { max-width: 560px; }

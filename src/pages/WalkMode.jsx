@@ -42,9 +42,12 @@ export default function WalkMode() {
         {/* Headphones orb */}
         <div className="wm-orb-wrap">
           <div className="wm-wave-bg">
-            {Array.from({ length: 40 }).map((_, i) => (
-              <span key={i} className="wm-wave-bar" style={{ '--i': i, '--delay': `${i * 0.04}s` }} />
-            ))}
+            {Array.from({ length: 48 }).map((_, i) => {
+              const center = 24
+              const dist = Math.abs(i - center) / center
+              const h = Math.max(0.15, 1 - dist * dist)
+              return <span key={i} className="wm-wave-bar" style={{ '--h': h, '--delay': `${i * 0.035}s` }} />
+            })}
           </div>
           <div className="wm-orb">
             <Headphones size={52} />
