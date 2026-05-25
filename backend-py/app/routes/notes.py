@@ -6,6 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.ai_service import generate_revision_cards
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import Note, RevisionCard, User
@@ -102,7 +103,7 @@ async def get_note(note_id: str, user: User = Depends(get_current_user), db: Asy
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
     data = note_out(note)
-    data["revision_cards"] = [{"id": card.id, "question": card.question, "next_review_date": card.next_review_date.isoformat()} for card in note.revision_cards]
+    data["revision_cards"] = [{"id": card.id, "question": card.question, "answer": card.answer, "card_type": card.card_type or "recall", "next_review_date": card.next_review_date.isoformat()} for card in note.revision_cards]
     return {"note": data}
 
 
@@ -135,7 +136,44 @@ async def generate_note_cards(note_id: str, user: User = Depends(get_current_use
     note = result.scalar_one_or_none()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found.")
-    cards = fallback_cards_from_note(note)
+
+    content = "\n\n".join(filter(None, [note.summary, note.content, note.code_snippet]))
+    ai_result = await generate_revision_cards(
+        title=note.title,
+        topic=note.topic,
+        content=content,
+        subtopic=note.subtopic,
+    )
+
+    if ai_result["cards"]:
+        cards = [
+            RevisionCard(
+                user_id=user.id,
+                note_id=note.id,
+                question=card["question"],
+                answer=card["answer"],
+                card_type=card["card_type"],
+                topic=note.topic,
+                difficulty=note.difficulty,
+            )
+            for card in ai_result["cards"]
+        ]
+    else:
+        cards = fallback_cards_from_note(note)
+
     db.add_all(cards)
     await db.flush()
-    return {"cards": [{"id": card.id, "question": card.question, "answer": card.answer} for card in cards]}
+    return {
+        "cards": [
+            {
+                "id": card.id,
+                "question": card.question,
+                "answer": card.answer,
+                "card_type": card.card_type,
+            }
+            for card in cards
+        ],
+        "provider": ai_result.get("provider", "fallback"),
+        "error": ai_result.get("error"),
+    }
+

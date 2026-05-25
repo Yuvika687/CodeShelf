@@ -1810,6 +1810,308 @@ progress::-moz-progress-bar {
   background: var(--green);
 }
 
+/* ── Error toast for card generation ── */
+.card-error-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--red) 38%, var(--border));
+  background: var(--red-soft);
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  animation: slideInToast 0.32s var(--ease) both;
+}
+
+@keyframes slideInToast {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* ── Typed cards panel ── */
+.typed-cards-panel {
+  padding: 20px;
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  background:
+    radial-gradient(circle at 12% 10%, rgba(139, 92, 246, 0.08), transparent 38%),
+    var(--card);
+}
+
+.typed-cards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.typed-cards-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+}
+
+.typed-cards-list {
+  display: grid;
+  gap: 12px;
+}
+
+.typed-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.012)),
+    var(--card-strong);
+  transition: border-color 0.22s var(--ease), box-shadow 0.22s var(--ease);
+  animation: cardSlideIn 0.38s var(--ease) both;
+}
+
+.typed-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.typed-card:nth-child(1) { animation-delay: 0s; }
+.typed-card:nth-child(2) { animation-delay: 0.05s; }
+.typed-card:nth-child(3) { animation-delay: 0.1s; }
+.typed-card:nth-child(4) { animation-delay: 0.15s; }
+.typed-card:nth-child(5) { animation-delay: 0.2s; }
+.typed-card:nth-child(6) { animation-delay: 0.25s; }
+
+.typed-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.typed-card-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.typed-card-delete {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-2);
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.typed-card-delete:hover {
+  color: var(--red);
+  background: var(--red-soft);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+}
+
+.typed-card-field {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.typed-card-field textarea {
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.typed-card-field textarea.mono {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+
+/* ── Summary skeleton loader (Fix 2) ── */
+.summary-field-wrap {
+  position: relative;
+  min-height: 80px;
+}
+
+.summary-skeleton {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+
+.skeleton-line:nth-child(2) { animation-delay: 0.15s; }
+.skeleton-line:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes skeletonPulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.summary-textarea {
+  width: 100%;
+}
+
+/* ── NoteDetail typed cards (Fix 3) ── */
+.detail-cards-section {
+  margin-top: 28px;
+}
+
+.detail-cards-section > h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.card-type-group {
+  margin-bottom: 20px;
+}
+
+.card-type-group-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.card-type-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.detail-typed-card {
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.032), rgba(255,255,255,0.012)),
+    var(--card-strong);
+  backdrop-filter: blur(12px);
+  transition: border-color 0.22s var(--ease), box-shadow 0.22s var(--ease);
+  animation: cardSlideIn 0.38s var(--ease) both;
+}
+
+.detail-typed-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+}
+
+.detail-typed-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.detail-card-question {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-strong);
+  line-height: 1.5;
+}
+
+.detail-card-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, border-color 0.18s;
+}
+
+.detail-card-toggle:hover {
+  color: var(--text-strong);
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.detail-card-answer {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  animation: cardSlideIn 0.28s var(--ease) both;
+}
+
+.detail-card-due {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Spin animation ── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
 .github-panel {
   border-color: color-mix(in srgb, var(--blue) 32%, var(--border));
   background:

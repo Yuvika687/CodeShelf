@@ -1,5 +1,5 @@
-import { Brain, Clipboard, FileJson, LoaderCircle, Sparkles, X } from 'lucide-react'
-import { useState } from 'react'
+import { Brain, Check, Clipboard, Edit3, FileJson, LoaderCircle, Sparkles, Trash2, X } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
@@ -10,6 +10,16 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode'
 import { aiApi, notesApi } from '../api/client.js'
 
 const noteTypes = ['Concept Note', 'Problem Note', 'Mistake Note', 'Command Note', 'Interview Note', 'Quick Recall Card']
+
+const CARD_TYPE_CONFIG = {
+  concept:     { label: 'Concept',     color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+  why:         { label: 'Why',         color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+  complexity:  { label: 'Complexity',  color: '#fbbf24', bg: 'rgba(251,191,36,0.12)' },
+  edge_case:   { label: 'Edge Case',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
+  code_recall: { label: 'Code Recall', color: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
+  interview:   { label: 'Interview',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' },
+}
+
 const llmPrompt = `You are preparing a CodeShelf learning note. Return only valid JSON with this shape:
 {
   "title": "specific title",
@@ -25,11 +35,11 @@ const llmPrompt = `You are preparing a CodeShelf learning note. Return only vali
   "source_url": "optional URL",
   "tags": ["short", "searchable", "tags"],
   "revision_cards": [
-    { "question": "active recall question", "answer": "precise answer" }
+    { "question": "active recall question", "answer": "precise answer", "card_type": "concept | why | complexity | edge_case | code_recall | interview" }
   ]
 }
 Make the content detailed enough for future revision. Do not add markdown fences around the JSON.
-Important: code_snippet must be a valid JSON string. Escape inner double quotes, backslashes, and newlines. For regex, write \\d as \\\\d.`
+Important: code_snippet must be a valid JSON string. Escape inner double quotes, backslashes, and newlines. For regex, write \\\\d as \\\\\\\\d.`
 
 export default function Upload() {
   const navigate = useNavigate()
@@ -40,8 +50,12 @@ export default function Upload() {
   const [importText, setImportText] = useState('')
   const [importHints, setImportHints] = useState([])
   const [importedCards, setImportedCards] = useState([])
+  const [isGenerating, setIsGenerating] = useState(false)
   const [isSummarizing, setIsSummarizing] = useState(false)
+  const [summaryVisible, setSummaryVisible] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [cardError, setCardError] = useState('')
+  const summaryRef = useRef(null)
   const [form, setForm] = useState({
     title: '',
     content: '',
@@ -57,22 +71,34 @@ export default function Upload() {
     generate_cards: true,
   })
 
-  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
+  const update = useCallback((key, value) => setForm((current) => ({ ...current, [key]: value })), [])
   const addTag = () => {
     const clean = tagInput.trim()
     if (clean && !tags.includes(clean)) setTags([...tags, clean])
     setTagInput('')
   }
 
+  function updateCard(index, field, value) {
+    setImportedCards((prev) => prev.map((card, i) => (i === index ? { ...card, [field]: value } : card)))
+  }
+
+  function deleteCard(index) {
+    setImportedCards((prev) => prev.filter((_, i) => i !== index))
+  }
+
   async function summarize() {
     setError('')
     setIsSummarizing(true)
+    setSummaryVisible(false)
+    update('summary', '')
     setStatus('Summarizing...')
     try {
       const data = await aiApi.summarizeNote({ text: form.content, title: form.title, topic: form.topic })
       update('summary', data.summary)
+      requestAnimationFrame(() => setSummaryVisible(true))
       setStatus(`Summary generated with ${providerLabel(data.provider)}.`)
     } catch (err) {
+      setSummaryVisible(true)
       setError(err.message)
       setStatus('')
     } finally {
@@ -90,14 +116,23 @@ export default function Upload() {
 
   async function generateAiPreview() {
     setError('')
-    setStatus('Generating revision cards...')
+    setCardError('')
+    setIsGenerating(true)
+    setStatus('Generating 6 typed revision cards with Gemini...')
     try {
       const result = await generateAiCardsForForm(form)
-      setImportedCards(result.cards)
-      setStatus(`${result.cards.length} revision card${result.cards.length === 1 ? '' : 's'} generated with ${providerLabel(result.provider)}.`)
+      if (!result.cards.length) {
+        setCardError('Gemini could not generate cards. Check your content or try again.')
+        setStatus('')
+      } else {
+        setImportedCards(result.cards)
+        setStatus(`${result.cards.length} revision card${result.cards.length === 1 ? '' : 's'} generated with ${providerLabel(result.provider)}.`)
+      }
     } catch (err) {
-      setError(err.message)
+      setCardError(err.message || 'Failed to generate cards. Please try again.')
       setStatus('')
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -142,7 +177,7 @@ export default function Upload() {
   }
 
   async function handleSubmit(event) {
-    event.preventDefault()
+    if (event && event.preventDefault) event.preventDefault()
     setError('')
     setIsSaving(true)
     setStatus('Preparing note...')
@@ -205,28 +240,85 @@ export default function Upload() {
               <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())} placeholder="Add tag..." />
             </div>
           </Field>
-          <Field label="Revision Summary"><textarea className="input" rows="3" value={form.summary} onChange={(e) => update('summary', e.target.value)} /></Field>
+          <Field label="Revision Summary">
+            <div className="summary-field-wrap">
+              {isSummarizing && !form.summary ? (
+                <div className="summary-skeleton">
+                  <div className="skeleton-line" style={{ width: '92%' }} />
+                  <div className="skeleton-line" style={{ width: '78%' }} />
+                  <div className="skeleton-line" style={{ width: '85%' }} />
+                </div>
+              ) : (
+                <textarea
+                  ref={summaryRef}
+                  className="input summary-textarea"
+                  rows="3"
+                  value={form.summary}
+                  onChange={(e) => update('summary', e.target.value)}
+                  style={{ opacity: summaryVisible ? 1 : 0, transition: 'opacity 0.3s ease' }}
+                />
+              )}
+            </div>
+          </Field>
           {error ? <p className="form-error">{error}</p> : null}
           {status ? <p className="recall-answer">{status}</p> : null}
           <div className="form-actions">
-            <button type="button" className="btn btn-secondary" onClick={summarize} disabled={isSummarizing || isSaving}>{isSummarizing ? <LoaderCircle size={16} /> : <Sparkles size={16} />} Summarize</button>
+            <button type="button" className="btn btn-secondary" onClick={summarize} disabled={isSummarizing || isSaving}>{isSummarizing ? <LoaderCircle size={16} className="spin" /> : <Sparkles size={16} />} {isSummarizing ? 'Summarizing...' : 'Summarize'}</button>
             <button className="btn btn-primary" disabled={isSaving}>{isSaving ? <LoaderCircle size={16} /> : <Brain size={16} />} Save and Generate Cards</button>
           </div>
         </form>
         <aside className="side-stack assistant-rail">
-          <section className="assistant-orb-panel"><Sparkles size={24} /><h3>AI Card Preview</h3><p>Generate summaries through Hugging Face and revision cards through Gemini without leaving CodeShelf.</p></section>
+          <section className="assistant-orb-panel"><Sparkles size={24} /><h3>AI Card Preview</h3><p>Generate 6 typed revision cards through Gemini — concept, why, complexity, edge cases, code recall, and interview.</p></section>
           <section className="card llm-importer">
             <h3><FileJson size={18} /> AI Card Builder</h3>
             <p className="muted">Use CodeShelf AI directly, or paste JSON only when importing from another model.</p>
             <div className="form-actions">
-              <button type="button" className="btn btn-primary compact" onClick={generateAiPreview} disabled={isSaving}><Sparkles size={14} /> Generate Cards</button>
               <button type="button" className="btn btn-secondary compact" onClick={copyPrompt}><Clipboard size={14} /> Copy Prompt</button>
               <button type="button" className="btn btn-primary compact" onClick={importFromLlm}><Sparkles size={14} /> Import</button>
             </div>
             <textarea className="input mono" value={importText} onChange={(e) => setImportText(e.target.value)} placeholder="Paste CodeShelf JSON from ChatGPT, Gemini, DeepSeek, or another LLM..." />
-            {importedCards.length ? <p className="recall-answer">{importedCards.length} AI/imported cards will be saved as real revision cards.</p> : null}
+            {cardError ? <div className="card-error-toast"><X size={14} onClick={() => setCardError('')} style={{ cursor: 'pointer', flexShrink: 0 }} /><span>{cardError}</span></div> : null}
             {importHints.length ? <div className="import-quality">{importHints.map((hint) => <span key={hint}>{hint}</span>)}</div> : null}
           </section>
+
+          {importedCards.length > 0 && (
+            <section className="card typed-cards-panel">
+              <div className="typed-cards-header">
+                <h3><Edit3 size={16} /> {importedCards.length} Revision Cards</h3>
+                <button
+                  type="button"
+                  className="btn btn-primary compact"
+                  disabled={isSaving}
+                  onClick={handleSubmit}
+                  style={{ fontSize: '0.82rem' }}
+                >
+                  {isSaving ? <LoaderCircle size={14} className="spin" /> : <Check size={14} />} Save All Cards
+                </button>
+              </div>
+              <div className="typed-cards-list">
+                {importedCards.map((card, idx) => {
+                  const cfg = CARD_TYPE_CONFIG[card.card_type] || CARD_TYPE_CONFIG.concept
+                  return (
+                    <div key={idx} className="typed-card" style={{ borderLeft: `3px solid ${cfg.color}` }}>
+                      <div className="typed-card-top">
+                        <span className="typed-card-badge" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
+                        <button type="button" className="typed-card-delete" onClick={() => deleteCard(idx)} title="Remove card"><Trash2 size={14} /></button>
+                      </div>
+                      <label className="typed-card-field">
+                        <span style={{ color: cfg.color, fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Question</span>
+                        <textarea className="input" rows={2} value={card.question} onChange={(e) => updateCard(idx, 'question', e.target.value)} />
+                      </label>
+                      <label className="typed-card-field">
+                        <span style={{ color: 'var(--muted)', fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Answer</span>
+                        <textarea className="input mono" rows={card.card_type === 'code_recall' ? 5 : 3} value={card.answer} onChange={(e) => updateCard(idx, 'answer', e.target.value)} />
+                      </label>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
           <section className="card"><h3>Good Revision Inputs</h3><ul className="check-list"><li>Write the mistake or rule plainly</li><li>Add the exact code or command</li><li>Use topics you want to filter later</li><li>Let cards be generated automatically</li></ul></section>
         </aside>
       </div>

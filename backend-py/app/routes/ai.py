@@ -109,7 +109,13 @@ async def summarize_with_hf_space(text: str) -> str:
     if not settings.hf_space_id or not text:
         return ""
     try:
-        return await asyncio.to_thread(predict_hf_space_sync, text)
+        return await asyncio.wait_for(
+            asyncio.to_thread(predict_hf_space_sync, text),
+            timeout=10,
+        )
+    except asyncio.TimeoutError:
+        # Timed out — fall back to extractive summary (first 3 sentences)
+        return cheap_summary(text, 3)
     except Exception:
         return ""
 
@@ -139,7 +145,7 @@ async def summarize_note(body: TextIn, user: User = Depends(get_current_user)):
         return {"summary": space_summary, "provider": "huggingface-space"}
     if settings.hf_api_key and body.text:
         try:
-            async with httpx.AsyncClient(timeout=20) as client:
+            async with httpx.AsyncClient(timeout=10) as client:
                 response = await client.post(
                     "https://api-inference.huggingface.co/models/facebook/bart-large-cnn",
                     headers={"Authorization": f"Bearer {settings.hf_api_key}"},
