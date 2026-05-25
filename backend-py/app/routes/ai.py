@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 
 import httpx
@@ -24,6 +25,10 @@ class TextIn(BaseModel):
     topic: str = "General"
 
 
+def clean_text(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
 def cheap_summary(text: str, max_sentences: int = 3) -> str:
     clean = re.sub(r"```[\s\S]*?```", " ", text or "")
     sentences = [item.strip() for item in re.split(r"(?<=[.!?])\s+|\n+", clean) if len(item.strip()) > 24]
@@ -45,6 +50,53 @@ def text_from_space_result(result) -> str:
             if text:
                 return text
     return ""
+
+
+def parse_cards_from_text(raw: str, topic: str = "General") -> list[dict[str, str]]:
+    text = clean_text(raw)
+    if not text:
+        return []
+    unfenced = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE).strip()
+    start_candidates = [idx for idx in (unfenced.find("["), unfenced.find("{")) if idx >= 0]
+    if not start_candidates:
+        return []
+    start = min(start_candidates)
+    end = unfenced.rfind("]") if unfenced[start] == "[" else unfenced.rfind("}")
+    if end < start:
+        return []
+    try:
+        parsed = json.loads(unfenced[start : end + 1])
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, dict):
+        parsed = parsed.get("revision_cards") or parsed.get("cards") or []
+    if not isinstance(parsed, list):
+        return []
+    cards = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        question = clean_text(item.get("question"))
+        answer = clean_text(item.get("answer"))
+        if question and answer:
+            cards.append(
+                {
+                    "question": question,
+                    "answer": answer,
+                    "card_type": clean_text(item.get("card_type")) or "recall",
+                    "topic": clean_text(item.get("topic")) or topic,
+                }
+            )
+    return cards[:8]
+
+
+def fallback_card_dicts(title: str, topic: str, text: str) -> list[dict[str, str]]:
+    summary = cheap_summary(text, 2)
+    subject = title or topic or "this note"
+    return [
+        {"question": f"What is the key idea of {subject}?", "answer": summary, "card_type": "concept", "topic": topic},
+        {"question": f"Explain {subject} like you are walking.", "answer": summary[:240], "card_type": "walk", "topic": topic},
+    ]
 
 
 def predict_hf_space_sync(text: str) -> str:
@@ -104,19 +156,15 @@ async def summarize_note(body: TextIn, user: User = Depends(get_current_user)):
 @router.post("/generate-cards")
 async def generate_cards(body: TextIn, user: User = Depends(get_current_user)):
     gemini = await ask_gemini(
-        "Create 3 concise revision cards as plain JSON array with question, answer, card_type, topic. "
+        "Create 5 concise active-recall revision cards. Return only valid JSON, no markdown, "
+        "as an array of objects with question, answer, card_type, topic. "
         f"Topic: {body.topic}\nTitle: {body.title}\nContent:\n{body.text[:5000]}"
     )
     if gemini:
-        return {"raw": gemini, "provider": "gemini"}
-    summary = cheap_summary(body.text, 2)
-    return {
-        "cards": [
-            {"question": f"What is the key idea of {body.title or body.topic}?", "answer": summary, "card_type": "concept", "topic": body.topic},
-            {"question": f"Explain {body.title or body.topic} like you are walking.", "answer": summary[:240], "card_type": "walk", "topic": body.topic},
-        ],
-        "provider": "fallback" if not settings.gemini_api_key else "gemini-ready-fallback",
-    }
+        cards = parse_cards_from_text(gemini, body.topic)
+        if cards:
+            return {"cards": cards, "provider": "gemini"}
+    return {"cards": fallback_card_dicts(body.title, body.topic, body.text), "provider": "fallback" if not settings.gemini_api_key else "gemini-ready-fallback"}
 
 
 @router.post("/generate-email-preview")
