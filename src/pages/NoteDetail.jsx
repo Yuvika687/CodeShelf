@@ -10,10 +10,11 @@ const CARD_TYPE_CONFIG = {
   edge_case:   { label: 'Edge Case',   color: '#f87171', bg: 'rgba(248,113,113,0.12)' },
   code_recall: { label: 'Code Recall', color: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
   interview:   { label: 'Interview',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' },
-  recall:      { label: 'Recall',      color: '#9ca3af', bg: 'rgba(156,163,175,0.12)' },
+  recall:      { label: 'Recall',      color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' },
 }
 
 const TYPE_ORDER = ['concept', 'why', 'complexity', 'edge_case', 'code_recall', 'interview', 'recall']
+const LONG_ANSWER_LENGTH = 260
 
 function groupCardsByType(cards) {
   const groups = {}
@@ -25,12 +26,41 @@ function groupCardsByType(cards) {
   return TYPE_ORDER.filter((t) => groups[t]).map((t) => ({ type: t, cards: groups[t] }))
 }
 
+function normalizeText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+function getCardId(card, type, idx) {
+  return card.id || `${type}-${idx}`
+}
+
+function getDisplayAnswer(card, note) {
+  const answer = String(card.answer || '').trim()
+  const normalizedAnswer = normalizeText(answer)
+  if (!normalizedAnswer) return 'No answer saved for this card.'
+
+  const normalizedSummary = normalizeText(note.summary)
+  const normalizedContent = normalizeText(note.content)
+  const looksLikeSummary =
+    normalizedSummary &&
+    (normalizedAnswer === normalizedSummary ||
+      (normalizedAnswer.length > 180 && normalizedSummary.includes(normalizedAnswer)) ||
+      (normalizedAnswer.length > 180 && normalizedAnswer.includes(normalizedSummary)))
+
+  if (looksLikeSummary || (normalizedContent && normalizedAnswer === normalizedContent)) {
+    return 'No concise answer saved for this card.'
+  }
+
+  return answer
+}
+
 export default function NoteDetail() {
   const { id } = useParams()
   const [note, setNote] = useState(null)
-  const [status, setStatus] = useState('')
+  const [, setStatus] = useState('')
   const [error, setError] = useState('')
   const [expandedCards, setExpandedCards] = useState({})
+  const [expandedLongAnswers, setExpandedLongAnswers] = useState({})
 
   useEffect(() => {
     notesApi.get(id).then((data) => setNote(data.note)).catch((err) => setError(err.message))
@@ -38,6 +68,10 @@ export default function NoteDetail() {
 
   function toggleAnswer(cardId) {
     setExpandedCards((prev) => ({ ...prev, [cardId]: !prev[cardId] }))
+  }
+
+  function toggleLongAnswer(cardId) {
+    setExpandedLongAnswers((prev) => ({ ...prev, [cardId]: !prev[cardId] }))
   }
 
   async function generateCards() {
@@ -57,6 +91,7 @@ export default function NoteDetail() {
   if (!note) return <div className="page"><p className="muted">Loading note...</p></div>
 
   const cardGroups = groupCardsByType(note.revision_cards || [])
+  const cardCount = cardGroups.reduce((total, group) => total + group.cards.length, 0)
 
   return (
     <div className="page detail-page">
@@ -67,55 +102,70 @@ export default function NoteDetail() {
             <div className="tags">{[note.topic, note.note_type, note.difficulty, ...(note.tags || [])].map((tag) => <small key={tag}>{tag}</small>)}</div>
             <h1>{note.title}</h1>
             <p>{note.summary || 'No summary yet.'}</p>
-            <div className="detail-actions">
-              <button className="btn btn-primary" onClick={generateCards}><Brain size={16} /> Generate Cards</button>
-              <button className="btn btn-secondary" onClick={explainWalk}><Sparkles size={16} /> Explain for Walk Mode</button>
-              <Link to={`/edit/${note.id}`} className="btn btn-secondary">Edit</Link>
-            </div>
           </section>
           <article className="markdown card"><MarkdownLite content={note.content} /></article>
           {note.code_snippet ? <pre className="code-panel">{note.code_snippet}</pre> : null}
-
-          {/* Typed revision cards section */}
-          {cardGroups.length > 0 && (
-            <section className="detail-cards-section">
-              <h2>Revision Cards</h2>
-              {cardGroups.map(({ type, cards }) => {
+          <div className="detail-actions detail-actions-bottom">
+            <button className="btn btn-primary" onClick={generateCards}><Brain size={16} /> Generate Cards</button>
+            <button className="btn btn-secondary" onClick={explainWalk}><Sparkles size={16} /> Explain for Walk Mode</button>
+            <Link to={`/edit/${note.id}`} className="btn btn-secondary">Edit</Link>
+          </div>
+        </main>
+        <aside className="revision-cards-column">
+          <div className="revision-cards-header">
+            <h2>Revision Cards</h2>
+            <span className="revision-cards-count">{cardCount}</span>
+          </div>
+          <div className="revision-cards-scroll">
+            {cardGroups.length > 0 ? (
+              cardGroups.map(({ type, cards }) => {
                 const cfg = CARD_TYPE_CONFIG[type]
                 return (
-                  <div key={type} className="card-type-group">
+                  <section key={type} className="card-type-group">
                     <h3 className="card-type-group-heading" style={{ color: cfg.color }}>
                       {cfg.label}
                       <span className="card-type-group-count" style={{ color: cfg.color, background: cfg.bg }}>{cards.length}</span>
                     </h3>
-                    {cards.map((card, idx) => (
-                      <div
-                        key={card.id || `${type}-${idx}`}
-                        className="detail-typed-card"
-                        style={{ borderLeft: `3px solid ${cfg.color}`, animationDelay: `${idx * 0.06}s` }}
-                      >
-                        <div className="detail-typed-card-top">
-                          <span className="typed-card-badge" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
-                        </div>
-                        <p className="detail-card-question">{card.question}</p>
-                        <button className="detail-card-toggle" onClick={() => toggleAnswer(card.id || `${type}-${idx}`)}>
-                          {expandedCards[card.id || `${type}-${idx}`] ? <><ChevronUp size={14} /> Hide Answer</> : <><ChevronDown size={14} /> Show Answer</>}
-                        </button>
-                        {expandedCards[card.id || `${type}-${idx}`] && (
-                          <div className="detail-card-answer">{card.answer}</div>
-                        )}
-                        <small className="detail-card-due">Due {card.next_review_date}</small>
-                      </div>
-                    ))}
-                  </div>
+                    <div className="card-type-list">
+                      {cards.map((card, idx) => {
+                        const cardId = getCardId(card, type, idx)
+                        const isExpanded = Boolean(expandedCards[cardId])
+                        const answer = getDisplayAnswer(card, note)
+                        const isLongAnswer = answer.length > LONG_ANSWER_LENGTH
+                        const isReadingMore = Boolean(expandedLongAnswers[cardId])
+                        return (
+                          <article
+                            key={cardId}
+                            className="detail-typed-card"
+                            style={{ '--card-type-color': cfg.color, animationDelay: `${idx * 0.04}s` }}
+                          >
+                            <div className="detail-typed-card-top">
+                              <span className="typed-card-badge" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
+                              <small className="detail-card-due">Due {card.next_review_date}</small>
+                            </div>
+                            <p className="detail-card-question">{card.question}</p>
+                            <button className="detail-card-toggle" onClick={() => toggleAnswer(cardId)}>
+                              {isExpanded ? <><ChevronUp size={14} /> Hide Answer</> : <><ChevronDown size={14} /> Show Answer</>}
+                            </button>
+                            <div className={`detail-card-answer-wrap ${isExpanded ? 'is-expanded' : ''} ${isReadingMore ? 'is-reading-more' : ''}`}>
+                              <p className="detail-card-answer">{answer}</p>
+                              {isLongAnswer ? (
+                                <button className="detail-card-read-more" onClick={() => toggleLongAnswer(cardId)}>
+                                  {isReadingMore ? 'Show less' : 'Read more'}
+                                </button>
+                              ) : null}
+                            </div>
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </section>
                 )
-              })}
-            </section>
-          )}
-          {!cardGroups.length && <p className="muted" style={{ marginTop: 20 }}>No revision cards yet. Click "Generate Cards" to create them.</p>}
-        </main>
-        <aside className="detail-rail">
-          {status ? <section className="card"><h3>Assistant</h3><p className="muted">{status}</p></section> : null}
+              })
+            ) : (
+              <p className="muted">No revision cards yet. Click "Generate Cards" to create them.</p>
+            )}
+          </div>
         </aside>
       </div>
     </div>
