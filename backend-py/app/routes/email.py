@@ -39,6 +39,8 @@ class EmailPreferencesIn(BaseModel):
     include_streak_alert: bool = True
     reminder_style: str = "focused"
     subject_style: str = "personal"
+    selected_topics: list[str] = []
+    selected_note_ids: list[str] = []
 
 
 class SessionReviewIn(BaseModel):
@@ -53,6 +55,30 @@ def parse_time(value: str) -> time:
 
 def clamp_card_count(value: int) -> int:
     return max(3, min(10, int(value or 5)))
+
+
+def parse_json_list(value: str) -> list[str]:
+    try:
+        parsed = json.loads(value or "[]")
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item).strip() for item in parsed if str(item).strip()]
+
+
+def clean_list(values: list[str], limit: int = 40) -> list[str]:
+    cleaned = []
+    seen = set()
+    for value in values:
+        text = str(value).strip()
+        key = text.lower()
+        if text and key not in seen:
+            cleaned.append(text)
+            seen.add(key)
+        if len(cleaned) >= limit:
+            break
+    return cleaned
 
 
 def prefs_out(prefs: EmailPreference) -> dict:
@@ -72,6 +98,8 @@ def prefs_out(prefs: EmailPreference) -> dict:
         "include_streak_alert": prefs.include_streak_alert,
         "reminder_style": prefs.reminder_style,
         "subject_style": prefs.subject_style,
+        "selected_topics": parse_json_list(prefs.selected_topics_json),
+        "selected_note_ids": parse_json_list(prefs.selected_note_ids_json),
     }
 
 
@@ -133,37 +161,60 @@ def short_text(value: str, limit: int = 130) -> str:
     return text if len(text) <= limit else f"{text[: limit - 3].rstrip()}..."
 
 
-async def due_cards(db: AsyncSession, user: User, limit: int) -> list[RevisionCard]:
+def scoped_card_query(query, prefs: EmailPreference):
+    selected_note_ids = parse_json_list(prefs.selected_note_ids_json)
+    selected_topics = parse_json_list(prefs.selected_topics_json)
+    if selected_note_ids:
+        query = query.where(RevisionCard.note_id.in_(selected_note_ids))
+    if selected_topics:
+        query = query.where(RevisionCard.topic.in_(selected_topics))
+    else:
+        allowed_topics = []
+        if prefs.include_dsa:
+            allowed_topics.append("DSA")
+        if prefs.include_sql:
+            allowed_topics.append("SQL")
+        if prefs.include_devops:
+            allowed_topics.append("DevOps")
+        if allowed_topics and len(allowed_topics) < 3:
+            query = query.where(RevisionCard.topic.in_(allowed_topics))
+    if not prefs.include_mistakes:
+        query = query.where(RevisionCard.card_type != "mistake", RevisionCard.mistake_id.is_(None))
+    return query
+
+
+async def due_cards(db: AsyncSession, user: User, prefs: EmailPreference, limit: int) -> list[RevisionCard]:
     today = date.today()
-    result = await db.execute(
+    due_query = scoped_card_query(
         select(RevisionCard)
-        .where(RevisionCard.user_id == user.id, RevisionCard.next_review_date <= today)
-        .order_by(RevisionCard.next_review_date.asc(), RevisionCard.memory_strength.asc())
-        .limit(limit)
+        .where(RevisionCard.user_id == user.id, RevisionCard.next_review_date <= today),
+        prefs,
     )
+    result = await db.execute(due_query.order_by(RevisionCard.next_review_date.asc(), RevisionCard.memory_strength.asc()).limit(limit))
     cards = result.scalars().all()
     if cards:
         return cards
-    fallback = await db.execute(
+    fallback_query = scoped_card_query(
         select(RevisionCard)
-        .where(RevisionCard.user_id == user.id)
-        .order_by(RevisionCard.updated_at.desc())
-        .limit(limit)
+        .where(RevisionCard.user_id == user.id),
+        prefs,
     )
+    fallback = await db.execute(fallback_query.order_by(RevisionCard.updated_at.desc()).limit(limit))
     return fallback.scalars().all()
 
 
-async def weak_topics(db: AsyncSession, user: User, limit: int = 3) -> list[str]:
-    result = await db.execute(
+async def weak_topics(db: AsyncSession, user: User, prefs: EmailPreference | None = None, limit: int = 3) -> list[str]:
+    query = (
         select(RevisionCard.topic, func.count(ReviewLog.id))
         .join(ReviewLog, ReviewLog.revision_card_id == RevisionCard.id)
         .where(RevisionCard.user_id == user.id, ReviewLog.rating.in_(["forgot", "again", "hard"]))
-        .group_by(RevisionCard.topic)
-        .order_by(func.count(ReviewLog.id).desc())
-        .limit(limit)
     )
+    if prefs:
+        query = scoped_card_query(query, prefs)
+    result = await db.execute(query.group_by(RevisionCard.topic).order_by(func.count(ReviewLog.id).desc()).limit(limit))
     topics = [topic for topic, _count in result.all()]
-    return topics or ["DSA patterns"]
+    selected_topics = parse_json_list(prefs.selected_topics_json) if prefs else []
+    return topics or selected_topics[:limit] or ["Selected notes"]
 
 
 def option_set(card: RevisionCard) -> tuple[list[dict[str, str]], str]:
@@ -244,9 +295,16 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
     if not user.email_verified:
         return {}
     target_count = clamp_card_count(prefs.daily_card_count)
-    cards = await due_cards(db, user, target_count)
-    topics = await weak_topics(db, user)
-    mistake = (await db.execute(select(Mistake).where(Mistake.user_id == user.id).limit(1))).scalar_one_or_none()
+    cards = await due_cards(db, user, prefs, target_count)
+    topics = await weak_topics(db, user, prefs)
+    mistake_query = select(Mistake).where(Mistake.user_id == user.id)
+    selected_topics = parse_json_list(prefs.selected_topics_json)
+    selected_note_ids = parse_json_list(prefs.selected_note_ids_json)
+    if selected_topics:
+        mistake_query = mistake_query.where(Mistake.topic.in_(selected_topics))
+    if selected_note_ids:
+        mistake_query = mistake_query.where(Mistake.note_id.in_(selected_note_ids))
+    mistake = (await db.execute(mistake_query.limit(1))).scalar_one_or_none()
     activity = await get_or_create_today_activity(db, user)
     card_blocks = build_card_blocks(cards, min(5, target_count))
     plan = [card.question for card in cards[:5]] or ["Add your first revision card", "Review one mistake", "Revise one coding pattern"]
@@ -331,7 +389,8 @@ async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
     ).scalars().all()
     cards_reviewed = sum(item.cards_reviewed for item in rows)
     mistakes_fixed = sum(item.mistakes_fixed for item in rows)
-    topics = await weak_topics(db, user)
+    prefs = await ensure_email_preferences(db, user)
+    topics = await weak_topics(db, user, prefs)
     subject = f"{user.name}, your CodeShelf weekly digest"
     text = (
         f"This week you reviewed {cards_reviewed} cards and fixed {mistakes_fixed} mistakes.\n"
@@ -774,6 +833,8 @@ async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_
     prefs.include_streak_alert = body.include_streak_alert
     prefs.reminder_style = body.reminder_style
     prefs.subject_style = body.subject_style
+    prefs.selected_topics_json = json.dumps(clean_list(body.selected_topics))
+    prefs.selected_note_ids_json = json.dumps(clean_list(body.selected_note_ids, limit=100))
     await db.flush()
     return {"preferences": prefs_out(prefs)}
 

@@ -1,6 +1,6 @@
 import { Bell, Clock, Flame, Mail, Send, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { emailApi } from '../api/client.js'
+import { emailApi, notesApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Field } from './Upload.jsx'
 
@@ -17,6 +17,8 @@ const recommendedPrefs = {
   include_streak_alert: true,
   reminder_style: 'focused',
   subject_style: 'personal',
+  selected_topics: [],
+  selected_note_ids: [],
 }
 
 const styleOptions = [
@@ -30,19 +32,36 @@ export default function EmailSettings() {
   const [prefs, setPrefs] = useState(null)
   const [preview, setPreview] = useState(null)
   const [advanced, setAdvanced] = useState(false)
+  const [notes, setNotes] = useState([])
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => { emailApi.preferences().then((data) => setPrefs(data.preferences)).catch((err) => setError(err.message)) }, [])
+  useEffect(() => {
+    emailApi.preferences().then((data) => setPrefs(data.preferences)).catch((err) => setError(err.message))
+    notesApi.list({}).then((data) => setNotes(data.notes || [])).catch(() => setNotes([]))
+  }, [])
 
   const enabledSummary = useMemo(() => {
     if (!prefs?.enabled) return 'Paused'
     return `${prefs.daily_card_count} cards at ${prefs.email_time}`
   }, [prefs])
   const scheduleLine = prefs?.enabled ? `Next eligible send: ${prefs.next_send_label || 'after the next cron window'}` : 'Daily emails are paused.'
+  const topics = useMemo(() => Array.from(new Set(notes.map((note) => note.topic).filter(Boolean))).sort(), [notes])
+  const scopedNotes = useMemo(() => {
+    const selectedTopics = prefs?.selected_topics || []
+    if (!selectedTopics.length) return notes
+    return notes.filter((note) => selectedTopics.includes(note.topic))
+  }, [notes, prefs])
 
   const update = (key, value) => setPrefs((current) => ({ ...current, [key]: value }))
+  const toggleListValue = (key, value) => {
+    setPrefs((current) => {
+      const existing = current?.[key] || []
+      const next = existing.includes(value) ? existing.filter((item) => item !== value) : [...existing, value]
+      return { ...current, [key]: next }
+    })
+  }
 
   async function run(label, action) {
     setError('')
@@ -153,6 +172,38 @@ export default function EmailSettings() {
               {styleOptions.map((option) => <button className={prefs.reminder_style === option.value ? 'active' : ''} type="button" key={option.value} onClick={() => update('reminder_style', option.value)}>{option.label}</button>)}
             </div>
           </Field>
+
+          <section className="email-scope">
+            <div className="email-scope-head">
+              <div>
+                <p className="eyebrow">Email scope</p>
+                <h3>Choose what this email can pull from</h3>
+              </div>
+              <button type="button" onClick={() => setPrefs((current) => ({ ...current, selected_topics: [], selected_note_ids: [] }))}>Use all</button>
+            </div>
+            <div className="email-scope-row">
+              {topics.map((topic) => (
+                <button type="button" key={topic} className={(prefs.selected_topics || []).includes(topic) ? 'active' : ''} onClick={() => toggleListValue('selected_topics', topic)}>{topic}</button>
+              ))}
+              {!topics.length ? <span>No topics yet</span> : null}
+            </div>
+            <div className="email-note-picker">
+              {scopedNotes.slice(0, 18).map((note) => (
+                <button type="button" key={note.id} className={(prefs.selected_note_ids || []).includes(note.id) ? 'active' : ''} onClick={() => toggleListValue('selected_note_ids', note.id)}>
+                  <strong>{note.title}</strong>
+                  <span>{note.topic}</span>
+                </button>
+              ))}
+              {!scopedNotes.length ? <p className="muted">No notes match this topic scope.</p> : null}
+            </div>
+            <p className="email-scope-help">
+              {(prefs.selected_note_ids || []).length
+                ? `Email will use only ${prefs.selected_note_ids.length} selected note${prefs.selected_note_ids.length === 1 ? '' : 's'}.`
+                : (prefs.selected_topics || []).length
+                  ? `Email will use notes/cards from: ${prefs.selected_topics.join(', ')}.`
+                  : 'Email can use all due cards, controlled by the topic switches below.'}
+            </p>
+          </section>
 
           <button type="button" className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
             <Settings2 size={15} /> {advanced ? 'Hide advanced controls' : 'Advanced controls'}

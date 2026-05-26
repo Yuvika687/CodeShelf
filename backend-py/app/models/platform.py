@@ -208,6 +208,8 @@ class EmailPreference(Base):
     include_streak_alert: Mapped[bool] = mapped_column(Boolean, default=True)
     reminder_style: Mapped[str] = mapped_column(String(30), default="focused")
     subject_style: Mapped[str] = mapped_column(String(30), default="personal")
+    selected_topics_json: Mapped[str] = mapped_column(Text, default="[]")
+    selected_note_ids_json: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
