@@ -76,6 +76,9 @@ export async function api(path, options = {}) {
       appOrigin: window.location.origin,
       probableCorsOrNetworkIssue: error instanceof TypeError,
     })
+    if (error instanceof TypeError) {
+      throw new Error(`Network/CORS failure while calling ${url}. Check that the backend is awake, deployed with the latest CORS fix, and that VITE_API_BASE_URL points to the right API.`)
+    }
     throw error
   }
 }

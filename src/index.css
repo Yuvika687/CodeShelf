@@ -442,9 +442,12 @@ body.light-theme .topbar {
   gap: 7px;
   min-height: 38px;
   padding: 0 12px;
-  border-left: 1px solid var(--border);
+  border: 1px solid rgba(251, 191, 36, .2);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, .075);
   color: var(--orange);
   font-weight: 900;
+  box-shadow: 0 0 22px rgba(251, 191, 36, .08);
 }
 
 .topbar-streak svg {
@@ -1611,7 +1614,8 @@ progress::-moz-progress-bar {
 
 .choice-grid button.active::before,
 .check-pill.active::before {
-  content: "âœ“";
+  content: "";
+  display: none;
   margin-right: 6px;
   color: var(--green);
 }
@@ -2647,9 +2651,26 @@ body.light-theme .revision-cards-count {
   }
 
   .topbar-profile div:not(.avatar),
-  .topbar-streak,
   .topbar-upload {
     display: none;
+  }
+
+  .topbar-actions {
+    flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .topbar-streak {
+    display: inline-flex;
+    min-width: 48px;
+    min-height: 38px;
+    padding: 0 10px;
+    justify-content: center;
+  }
+
+  .topbar-streak svg {
+    width: 16px;
+    height: 16px;
   }
 
   .luxury-auth {
@@ -6369,7 +6390,7 @@ body.light-theme .page-header h1 {
 
 .email-pill-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 

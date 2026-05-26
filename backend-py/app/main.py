@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import JSONResponse, RedirectResponse, Response
 
 from app.config import get_settings
 from app.database import engine
@@ -63,7 +63,16 @@ async def cors_fallback(request, call_next):
     origin = request.headers.get("origin")
     if request.method == "OPTIONS" and allowed_browser_origin(origin):
         return Response(status_code=204, headers=cors_headers(origin))
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        response = JSONResponse(
+            status_code=500,
+            content={
+                "detail": "CodeShelf API hit a server error while handling this request.",
+                "error": str(exc) if settings.environment == "development" else "internal_server_error",
+            },
+        )
     if allowed_browser_origin(origin):
         response.headers.update(cors_headers(origin))
     return response

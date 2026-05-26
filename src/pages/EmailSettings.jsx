@@ -1,4 +1,4 @@
-import { Bell, Clock, Mail, Send, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { Bell, Clock, Flame, Mail, Send, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { emailApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -79,7 +79,10 @@ export default function EmailSettings() {
   async function sendTest() {
     await run('test', async () => {
       const data = await emailApi.sendTest()
-      setMessage(`Test email ${data.status}.`)
+      if (data.status === 'failed') {
+        throw new Error(data.error_message || 'Email provider rejected the test email.')
+      }
+      setMessage(`Test email ${data.status}. Check ${user?.email || 'your verified inbox'}.`)
     })
   }
 
@@ -131,6 +134,7 @@ export default function EmailSettings() {
           <div className="email-pill-grid">
             <SmartPill icon={Clock} label="Saved time" value={prefs.email_time} />
             <SmartPill icon={Bell} label="Cards" value={`${prefs.daily_card_count}/day`} />
+            <SmartPill icon={Flame} label="Streak" value={`${user?.current_streak || 0} days`} />
             <SmartPill icon={ShieldCheck} label="Safety" value="2/day cap" />
           </div>
 
