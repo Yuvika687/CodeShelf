@@ -1688,6 +1688,125 @@ progress::-moz-progress-bar {
   background: var(--surface-2);
 }
 
+.profile-page {
+  display: grid;
+  gap: 18px;
+}
+
+.streak-heatmap-panel {
+  position: relative;
+  padding: 20px;
+  border: 1px solid rgba(98, 213, 200, .14);
+  border-radius: 18px;
+  background:
+    linear-gradient(rgba(98,213,200,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(98,213,200,.035) 1px, transparent 1px),
+    linear-gradient(135deg, rgba(251, 191, 36, .08), transparent 36%),
+    var(--card);
+  background-size: 28px 28px, 28px 28px, auto, auto;
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.streak-heatmap-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid rgba(98, 213, 200, .2);
+  pointer-events: none;
+}
+
+.heatmap-head,
+.heatmap-legend {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.heatmap-head h2 {
+  margin: 4px 0 0;
+  color: var(--text-strong);
+  font-size: 24px;
+}
+
+.heatmap-score {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px 13px;
+  border: 1px solid rgba(251, 191, 36, .24);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, .08);
+  color: var(--orange);
+  font-family: "JetBrains Mono", monospace;
+}
+
+.heatmap-score span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.heatmap-wrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(15, minmax(12px, 1fr));
+  gap: 7px;
+}
+
+.heat-cell {
+  display: block;
+  aspect-ratio: 1;
+  min-width: 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.045);
+}
+
+.heat-cell.l1 { background: rgba(98, 213, 200, .16); border-color: rgba(98, 213, 200, .22); }
+.heat-cell.l2 { background: rgba(98, 213, 200, .28); border-color: rgba(98, 213, 200, .34); }
+.heat-cell.l3 { background: rgba(139, 92, 246, .45); border-color: rgba(139, 92, 246, .48); }
+.heat-cell.l4 {
+  background: rgba(251, 191, 36, .78);
+  border-color: rgba(251, 191, 36, .84);
+  box-shadow: 0 0 12px rgba(251, 191, 36, .24);
+}
+
+.heatmap-legend {
+  color: var(--muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+}
+
+.heatmap-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.heatmap-legend div {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.heatmap-legend .heat-cell {
+  width: 13px;
+  height: 13px;
+}
+
 .auth-page {
   min-height: 100vh;
   display: grid;
@@ -6583,5 +6702,15 @@ body.light-theme .page-header h1 {
   .chat-form-row,
   .email-schedule-strip {
     grid-template-columns: 1fr;
+  }
+
+  .heatmap-head,
+  .heatmap-legend {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .heatmap-grid {
+    grid-template-columns: repeat(10, minmax(14px, 1fr));
   }
 }
