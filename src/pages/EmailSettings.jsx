@@ -1,118 +1,183 @@
-import { Clock, Mail, Palette, Send, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Bell, Clock, Mail, Send, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { emailApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Field } from './Upload.jsx'
 
+const recommendedPrefs = {
+  enabled: true,
+  email_time: '08:00',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Calcutta',
+  daily_card_count: 5,
+  include_dsa: true,
+  include_sql: true,
+  include_devops: true,
+  include_mistakes: true,
+  include_summary: true,
+  include_streak_alert: true,
+  reminder_style: 'focused',
+  subject_style: 'personal',
+}
+
 const styleOptions = [
-  { value: 'focused', label: '🎯 Focused' },
-  { value: 'calm', label: '🧘 Calm' },
-  { value: 'coach-like', label: '🔥 Coach' },
+  { value: 'focused', label: 'Focused' },
+  { value: 'calm', label: 'Calm' },
+  { value: 'coach-like', label: 'Coach' },
 ]
 
 export default function EmailSettings() {
   const { user } = useAuth()
   const [prefs, setPrefs] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [advanced, setAdvanced] = useState(false)
+  const [busy, setBusy] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => { emailApi.preferences().then((data) => setPrefs(data.preferences)) }, [])
+  useEffect(() => { emailApi.preferences().then((data) => setPrefs(data.preferences)).catch((err) => setError(err.message)) }, [])
+
+  const enabledSummary = useMemo(() => {
+    if (!prefs?.enabled) return 'Paused'
+    return `${prefs.daily_card_count} cards at ${prefs.email_time}`
+  }, [prefs])
 
   const update = (key, value) => setPrefs((current) => ({ ...current, [key]: value }))
 
-  async function run(action) {
+  async function run(label, action) {
     setError('')
     setMessage('')
+    setBusy(label)
     try {
       await action()
     } catch (err) {
       setError(err.message)
+    } finally {
+      setBusy('')
     }
   }
 
-  async function save() {
-    await run(async () => {
-      const data = await emailApi.updatePreferences(prefs)
+  async function save(nextPrefs = prefs) {
+    await run('save', async () => {
+      const data = await emailApi.updatePreferences(nextPrefs)
       setPrefs(data.preferences)
-      setMessage('Email preferences saved.')
+      setMessage('Email brain saved.')
     })
+  }
+
+  async function applyRecommended() {
+    const next = { ...prefs, ...recommendedPrefs, enabled: Boolean(user?.email_verified) }
+    setPrefs(next)
+    await save(next)
+    await loadPreview()
   }
 
   async function loadPreview() {
-    await run(async () => setPreview(await emailApi.preview()))
+    await run('preview', async () => setPreview(await emailApi.preview()))
   }
 
   async function sendTest() {
-    await run(async () => {
+    await run('test', async () => {
       const data = await emailApi.sendTest()
-      setMessage(`Email ${data.status}.`)
+      setMessage(`Test email ${data.status}.`)
     })
   }
 
-  if (!prefs) return <div className="page"><p className="muted">Loading email settings...</p></div>
+  if (!prefs) return <div className="page"><p className="muted">Loading email brain...</p></div>
 
   return (
-    <div className="page email-studio">
-      <section className="email-hero">
+    <div className="page email-studio email-brain-page">
+      <section className="email-brain-hero">
         <div>
-          <p className="eyebrow">Inbox coach</p>
-          <h1>Email Studio</h1>
-          <p>Verified inbox reminders, tuned to how you revise.</p>
+          <p className="eyebrow">Inbox memory engine</p>
+          <h1>One email. One recall sprint. No setup headache.</h1>
+          <p>CodeShelf sends a compact daily memory pack with weak topics, mistakes, formulas, and due cards.</p>
+          <div className="email-hero-actions">
+            <button className="btn btn-primary" onClick={applyRecommended} disabled={busy === 'save'}>
+              <Sparkles size={16} /> Use Best Settings
+            </button>
+            <button className="btn btn-secondary" onClick={sendTest} disabled={busy === 'test'}>
+              <Send size={16} /> Send Test
+            </button>
+          </div>
         </div>
-        <div className="mail-visual" aria-hidden="true"><Mail size={40} /></div>
+        <div className="email-status-orb">
+          <Mail size={30} />
+          <strong>{enabledSummary}</strong>
+          <span>Max 2 emails/day</span>
+        </div>
       </section>
 
       {!user?.email_verified ? (
         <section className="verify-banner">
           <ShieldCheck size={20} />
-          <div><strong>Google verification required.</strong><span>CodeShelf sends reminders only to the verified email returned by Google sign-in.</span></div>
+          <div><strong>Google verification required.</strong><span>Reminders can be enabled only for your verified Google email.</span></div>
         </section>
       ) : null}
 
-      <div className="email-layout">
-        <section className="card form-card email-control-panel">
-          <h2><Mail size={18} /> Delivery</h2>
-          <div className="toggle-row">
-            <div><strong>Daily reminders</strong><span>Send due cards and weak topics to your verified inbox.</span></div>
+      <div className="email-brain-grid">
+        <section className="email-simple-panel">
+          <div className="email-panel-head">
+            <div><p className="eyebrow">Recommended loop</p><h2>Daily recall sprint</h2></div>
             <button className={`switch ${prefs.enabled ? 'on' : ''}`} type="button" onClick={() => update('enabled', !prefs.enabled)}><span /></button>
           </div>
-          <div className="two-col">
-            <Field label="Email Time"><input className="input" value={prefs.email_time} onChange={(e) => update('email_time', e.target.value)} placeholder="08:00" /></Field>
-            <Field label="Timezone"><input className="input" value={prefs.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="Asia/Calcutta" /></Field>
-          </div>
-          <Field label="Daily Card Count"><input className="input" type="number" min="1" max="20" value={prefs.daily_card_count} onChange={(e) => update('daily_card_count', Number(e.target.value))} /></Field>
 
-          <h2><Palette size={18} /> Personalization</h2>
-          <Field label="Reminder Style">
-            <div className="choice-grid">
+          <div className="email-pill-grid">
+            <SmartPill icon={Clock} label="Morning" value={prefs.email_time} />
+            <SmartPill icon={Bell} label="Cards" value={`${prefs.daily_card_count}/day`} />
+            <SmartPill icon={ShieldCheck} label="Safety" value="2/day cap" />
+          </div>
+
+          <Field label="How many cards per email?">
+            <input className="input" type="range" min="3" max="10" value={prefs.daily_card_count} onChange={(e) => update('daily_card_count', Number(e.target.value))} />
+          </Field>
+
+          <div className="email-count-strip">
+            {[3, 5, 7, 10].map((count) => (
+              <button key={count} type="button" className={prefs.daily_card_count === count ? 'active' : ''} onClick={() => update('daily_card_count', count)}>{count}</button>
+            ))}
+          </div>
+
+          <Field label="Reminder voice">
+            <div className="choice-grid email-choice-grid">
               {styleOptions.map((option) => <button className={prefs.reminder_style === option.value ? 'active' : ''} type="button" key={option.value} onClick={() => update('reminder_style', option.value)}>{option.label}</button>)}
             </div>
           </Field>
-          <Field label="Subject Line">
-            <select className="input" value={prefs.subject_style} onChange={(e) => update('subject_style', e.target.value)}>
-              <option value="personal">Personal revision</option>
-              <option value="streak">Streak protection</option>
-            </select>
-          </Field>
-          <div className="check-grid">
-            <CheckItem label="DSA" checked={prefs.include_dsa} onChange={() => update('include_dsa', !prefs.include_dsa)} />
-            <CheckItem label="SQL" checked={prefs.include_sql} onChange={() => update('include_sql', !prefs.include_sql)} />
-            <CheckItem label="DevOps" checked={prefs.include_devops} onChange={() => update('include_devops', !prefs.include_devops)} />
-            <CheckItem label="Mistakes" checked={prefs.include_mistakes} onChange={() => update('include_mistakes', !prefs.include_mistakes)} />
-            <CheckItem label="Summary block" checked={prefs.include_summary} onChange={() => update('include_summary', !prefs.include_summary)} />
-            <CheckItem label="Streak alerts" checked={prefs.include_streak_alert} onChange={() => update('include_streak_alert', !prefs.include_streak_alert)} />
-          </div>
+
+          <button type="button" className="advanced-toggle" onClick={() => setAdvanced((value) => !value)}>
+            <Settings2 size={15} /> {advanced ? 'Hide advanced controls' : 'Advanced controls'}
+          </button>
+
+          {advanced ? (
+            <div className="email-advanced">
+              <div className="two-col">
+                <Field label="Email Time"><input className="input" value={prefs.email_time} onChange={(e) => update('email_time', e.target.value)} placeholder="08:00" /></Field>
+                <Field label="Timezone"><input className="input" value={prefs.timezone} onChange={(e) => update('timezone', e.target.value)} placeholder="Asia/Calcutta" /></Field>
+              </div>
+              <Field label="Subject Line">
+                <select className="input" value={prefs.subject_style} onChange={(e) => update('subject_style', e.target.value)}>
+                  <option value="personal">Personal revision</option>
+                  <option value="streak">Streak protection</option>
+                </select>
+              </Field>
+              <div className="check-grid">
+                <CheckItem label="DSA" checked={prefs.include_dsa} onChange={() => update('include_dsa', !prefs.include_dsa)} />
+                <CheckItem label="SQL" checked={prefs.include_sql} onChange={() => update('include_sql', !prefs.include_sql)} />
+                <CheckItem label="DevOps" checked={prefs.include_devops} onChange={() => update('include_devops', !prefs.include_devops)} />
+                <CheckItem label="Mistakes" checked={prefs.include_mistakes} onChange={() => update('include_mistakes', !prefs.include_mistakes)} />
+                <CheckItem label="Summary" checked={prefs.include_summary} onChange={() => update('include_summary', !prefs.include_summary)} />
+                <CheckItem label="Streak rescue" checked={prefs.include_streak_alert} onChange={() => update('include_streak_alert', !prefs.include_streak_alert)} />
+              </div>
+            </div>
+          ) : null}
+
           {message ? <p className="form-success">{message}</p> : null}
           {error ? <p className="form-error">{error}</p> : null}
           <div className="form-actions">
-            <button className="btn btn-primary" onClick={save}>Save</button>
-            <button className="btn btn-secondary" onClick={loadPreview}>Preview</button>
-            <button className="btn btn-secondary" onClick={sendTest}><Send size={16} /> Send Test</button>
+            <button className="btn btn-primary" onClick={() => save()} disabled={busy === 'save'}>Save</button>
+            <button className="btn btn-secondary" onClick={loadPreview} disabled={busy === 'preview'}>Preview</button>
           </div>
         </section>
 
-        {/* Dark-themed email preview card */}
         <section className="email-preview-card">
           <div className="email-preview-header">
             <Clock size={14} />
@@ -127,14 +192,18 @@ export default function EmailSettings() {
           ) : (
             <div className="email-preview-empty">
               <div className="email-preview-icon"><Mail size={32} /></div>
-              <strong>Email Preview</strong>
-              <span>Click "Preview" after configuring your style and topic preferences to see your daily reminder here.</span>
+              <strong>Memory sprint preview</strong>
+              <span>Preview shows exactly what the user receives: due cards, weak topics, streak status, and one-click review.</span>
             </div>
           )}
         </section>
       </div>
     </div>
   )
+}
+
+function SmartPill({ icon: Icon, label, value }) {
+  return <div className="smart-pill"><Icon size={16} /><span>{label}</span><strong>{value}</strong></div>
 }
 
 function CheckItem({ label, checked, onChange }) {

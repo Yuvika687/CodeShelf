@@ -162,8 +162,10 @@ async def summarize_note(body: TextIn, user: User = Depends(get_current_user)):
 @router.post("/generate-cards")
 async def generate_cards(body: TextIn, user: User = Depends(get_current_user)):
     gemini = await ask_gemini(
-        "Create 5 concise active-recall revision cards. Return only valid JSON, no markdown, "
+        "Create 5 concise active-recall revision cards for a developer. Return only valid JSON, no markdown, "
         "as an array of objects with question, answer, card_type, topic. "
+        "Cover concept, formula/complexity, code recall, edge case, and interview explanation when possible. "
+        "Answers must be grounded in the content, include concrete formulas/code where available, and avoid invented facts. "
         f"Topic: {body.topic}\nTitle: {body.title}\nContent:\n{body.text[:5000]}"
     )
     if gemini:
@@ -177,7 +179,9 @@ async def generate_cards(body: TextIn, user: User = Depends(get_current_user)):
 async def generate_email_preview(body: TextIn, user: User = Depends(get_current_user)):
     gemini = await ask_gemini(
         f"Write a short CodeShelf daily coding revision reminder email for {user.name}. "
-        f"Include 3 revision tasks, 1 weak topic, and a CTA link. Topic context: {body.topic}. Notes: {body.text[:2500]}"
+        "Keep it useful for a busy developer: one warm intro, 3 concrete revision tasks, 1 weak topic, "
+        "1 formula/code recall prompt if relevant, and one CTA link. No hype, no long theory. "
+        f"Topic context: {body.topic}. Notes: {body.text[:2500]}"
     )
     if gemini:
         return {"subject": f"{user.name}, today's coding revision is ready", "body": gemini, "provider": "gemini"}
@@ -191,7 +195,8 @@ async def generate_email_preview(body: TextIn, user: User = Depends(get_current_
 @router.post("/explain-for-walk-mode")
 async def explain_for_walk_mode(body: TextIn, user: User = Depends(get_current_user)):
     gemini = await ask_gemini(
-        "Explain this in a short audio-friendly way for someone walking. Keep it under 80 words.\n"
+        "Explain this in a short audio-friendly way for someone walking. Keep it under 90 words. "
+        "Use a memory hook, one concrete formula/code/invariant if relevant, and one recall question.\n"
         f"Title: {body.title}\nContent:\n{body.text[:3000]}"
     )
     if gemini:

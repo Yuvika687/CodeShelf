@@ -5860,3 +5860,407 @@ body.light-theme .page-header h1 {
   line-height: 1.6;
   max-width: 280px;
 }
+
+/* Concept Memory */
+.concept-page {
+  display: grid;
+  gap: 18px;
+}
+
+.concept-hero,
+.email-brain-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: stretch;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(45, 212, 191, .12), transparent 42%),
+    linear-gradient(180deg, rgba(251, 191, 36, .08), transparent 58%),
+    var(--card);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.concept-hero h1,
+.email-brain-hero h1 {
+  margin: 8px 0 10px;
+  max-width: 880px;
+  color: var(--text-strong);
+  font-size: clamp(34px, 5vw, 62px);
+  line-height: 1.03;
+}
+
+.concept-hero p,
+.email-brain-hero p {
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.concept-actions,
+.email-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.memory-gauge,
+.email-status-orb {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 190px;
+  min-height: 190px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border));
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(98, 213, 200, .18), transparent),
+    var(--surface);
+  text-align: center;
+}
+
+.memory-gauge span {
+  color: var(--text-strong);
+  font-size: 56px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.memory-gauge strong,
+.email-status-orb strong {
+  color: var(--text-strong);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.memory-gauge p,
+.email-status-orb span {
+  margin: 8px 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.concept-status {
+  margin: 0;
+}
+
+.concept-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: 18px;
+  align-items: start;
+}
+
+.concept-main {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.concept-panel {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.035), transparent 54%),
+    var(--card);
+}
+
+.concept-panel-head,
+.email-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.concept-panel-head {
+  justify-content: flex-start;
+}
+
+.concept-panel-head h2,
+.email-panel-head h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 19px;
+}
+
+.concept-reconstruction h3 {
+  margin: 18px 0 8px;
+  color: var(--text-strong);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.concept-reconstruction p {
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.concept-code {
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.formula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.formula-grid code {
+  display: block;
+  min-height: 52px;
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--orange) 28%, var(--border));
+  border-radius: 12px;
+  background: var(--orange-soft);
+  color: var(--text-strong);
+  white-space: normal;
+}
+
+.mistake-memory-list,
+.source-list,
+.chat-tree-list {
+  display: grid;
+  gap: 10px;
+}
+
+.mistake-memory-list article,
+.source-list a,
+.chat-node {
+  display: block;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.mistake-memory-list strong,
+.source-list strong,
+.chat-node strong {
+  display: block;
+  color: var(--text-strong);
+}
+
+.mistake-memory-list p,
+.source-list span,
+.chat-node p {
+  margin: 8px 0 0;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.mistake-memory-list small,
+.chat-node small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+.source-list a:hover {
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border));
+  transform: translateY(-1px);
+}
+
+.chat-tree-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.chat-tree-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.chat-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.chat-node {
+  position: relative;
+}
+
+.chat-node.child {
+  margin-left: 18px;
+  border-left: 3px solid var(--accent);
+}
+
+.chat-node div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chat-node button,
+.advanced-toggle {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.walk-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text-strong);
+  font-weight: 900;
+}
+
+/* Email Brain */
+.email-brain-page {
+  display: grid;
+  gap: 18px;
+}
+
+.email-brain-hero {
+  min-height: 260px;
+}
+
+.email-status-orb svg {
+  margin-bottom: 12px;
+  color: var(--accent);
+}
+
+.email-brain-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 430px);
+  gap: 18px;
+  align-items: start;
+}
+
+.email-simple-panel {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.04), transparent 54%),
+    var(--card);
+  box-shadow: var(--shadow-soft);
+}
+
+.email-pill-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.smart-pill {
+  display: grid;
+  gap: 6px;
+  min-height: 96px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.smart-pill svg {
+  color: var(--accent);
+}
+
+.smart-pill span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.smart-pill strong {
+  color: var(--text-strong);
+  font-size: 18px;
+}
+
+.email-count-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.email-count-strip button {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 900;
+}
+
+.email-count-strip button.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text-strong);
+}
+
+.email-choice-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.advanced-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  padding: 0;
+}
+
+.email-advanced {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+@media (max-width: 1100px) {
+  .concept-grid,
+  .email-brain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-card-rail,
+  .email-preview-card {
+    position: static;
+    height: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .concept-hero,
+  .email-brain-hero {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .memory-gauge,
+  .email-status-orb {
+    width: 100%;
+    min-height: 130px;
+  }
+
+  .formula-grid,
+  .email-pill-grid,
+  .chat-form-row {
+    grid-template-columns: 1fr;
+  }
+}

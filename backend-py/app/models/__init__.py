@@ -1,6 +1,8 @@
 from app.models.base import Base
 from app.models.platform import (
     DailyActivity,
+    ConceptChatNode,
+    ConceptSource,
     EmailLog,
     EmailPreference,
     GitHubConnection,
@@ -17,6 +19,8 @@ from app.models.platform import (
 __all__ = [
     "Base",
     "DailyActivity",
+    "ConceptChatNode",
+    "ConceptSource",
     "EmailLog",
     "EmailPreference",
     "GitHubConnection",

@@ -29,6 +29,8 @@ config.set_main_option("sqlalchemy.url", sync_url)
 
 
 def clean_asyncpg_url(url: str) -> tuple[str, bool]:
+    if not url.startswith("postgresql"):
+        return url, False
     parsed = urlsplit(url)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     wants_ssl = parsed.hostname and "neon.tech" in parsed.hostname

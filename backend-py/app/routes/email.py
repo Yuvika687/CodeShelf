@@ -50,6 +50,10 @@ def parse_time(value: str) -> time:
     return time(hour, minute)
 
 
+def clamp_card_count(value: int) -> int:
+    return max(3, min(10, int(value or 5)))
+
+
 def prefs_out(prefs: EmailPreference) -> dict:
     return {
         "enabled": prefs.enabled,
@@ -175,9 +179,9 @@ def option_set(card: RevisionCard) -> tuple[list[dict[str, str]], str]:
     return rows, correct_label
 
 
-def build_card_blocks(cards: list[RevisionCard]) -> list[dict]:
+def build_card_blocks(cards: list[RevisionCard], limit: int = 5) -> list[dict]:
     blocks = []
-    for index, card in enumerate(cards[:3], 1):
+    for index, card in enumerate(cards[:limit], 1):
         blocks.append(
             {
                 "index": index,
@@ -223,8 +227,9 @@ async def personalized_intro(user: User, topics: list[str], due_count: int, styl
         f"{'' if due_count == 1 else 's'} today. Focus on {', '.join(topics[:2])} and keep the streak alive."
     )
     prompt = (
-        f"Write one {style} CodeShelf daily revision intro. "
-        "No markdown. Under 35 words. "
+        f"Write one {style} CodeShelf daily revision intro for a busy developer. "
+        "No markdown. Under 35 words. Make it specific, calm, and action-oriented. "
+        "Mention due cards or weak topics, but do not sound spammy, salesy, or dramatic. "
         f"User: {user.name}. Current streak: {user.current_streak}. Due cards: {due_count}. Weak topics: {', '.join(topics)}."
     )
     return short_text(await ask_gemini(prompt), 220) or fallback
@@ -234,11 +239,12 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
     prefs = await ensure_email_preferences(db, user)
     if not user.email_verified:
         return {}
-    cards = await due_cards(db, user, max(3, prefs.daily_card_count))
+    target_count = clamp_card_count(prefs.daily_card_count)
+    cards = await due_cards(db, user, target_count)
     topics = await weak_topics(db, user)
     mistake = (await db.execute(select(Mistake).where(Mistake.user_id == user.id).limit(1))).scalar_one_or_none()
     activity = await get_or_create_today_activity(db, user)
-    card_blocks = build_card_blocks(cards)
+    card_blocks = build_card_blocks(cards, min(5, target_count))
     plan = [card.question for card in cards[:5]] or ["Add your first revision card", "Review one mistake", "Revise one coding pattern"]
     if mistake and len(plan) < 5:
         plan.append(f"Review mistake: {mistake.mistake_title}")
@@ -256,7 +262,7 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "/api/email/session",
         {
             "token": create_email_token(
-                {"sub": user.id, "card_ids": [card.id for card in cards[:3]], "type": "email_session"},
+                {"sub": user.id, "card_ids": [card.id for card in cards[: min(5, target_count)]], "type": "email_session"},
                 hours=24,
             )
         },
@@ -276,7 +282,7 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "session_url": session_url,
         "preferences_url": frontend_url("/email-settings"),
         "unsubscribe_url": unsubscribe,
-        "card_ids": [card.id for card in cards[:3]],
+        "card_ids": [card.id for card in cards[: min(5, target_count)]],
     }
     return {**context, "html": render_daily_html(context), "text": render_daily_text(context)}
 
@@ -660,6 +666,22 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
         if not payload:
             skipped += 1
             continue
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        duplicate = (
+            await db.execute(
+                select(EmailLog.id)
+                .where(
+                    EmailLog.user_id == user.id,
+                    EmailLog.email_type == payload["email_type"],
+                    EmailLog.sent_at >= today_start,
+                    EmailLog.status.in_(["sent", "printed"]),
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if duplicate:
+            skipped += 1
+            continue
         outcome = await send_email(db, user, payload)
         sent += 1 if outcome["status"] in {"sent", "printed"} else 0
         failed += 1 if outcome["status"] == "failed" else 0
@@ -708,7 +730,7 @@ async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_
     prefs.enabled = body.enabled
     prefs.email_time = parse_time(body.email_time)
     prefs.timezone = body.timezone
-    prefs.daily_card_count = body.daily_card_count
+    prefs.daily_card_count = clamp_card_count(body.daily_card_count)
     prefs.include_dsa = body.include_dsa
     prefs.include_sql = body.include_sql
     prefs.include_devops = body.include_devops

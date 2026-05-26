@@ -145,6 +145,13 @@ export const emailApi = {
   sendTest: () => api('/email/send-test', { method: 'POST' }),
 }
 
+export const conceptApi = {
+  detail: (noteId) => api(`/concepts/notes/${noteId}`),
+  research: (noteId) => api(`/concepts/notes/${noteId}/research`, { method: 'POST' }),
+  reconstruct: (noteId, payload = {}) => api(`/concepts/notes/${noteId}/reconstruct`, { method: 'POST', body: payload }),
+  chat: (noteId, payload) => api(`/concepts/notes/${noteId}/chat`, { method: 'POST', body: payload }),
+}
+
 export const aiApi = {
   summarizeNote: (payload) => api('/ai/summarize-note', { method: 'POST', body: payload }),
   generateCards: (payload) => api('/ai/generate-cards', { method: 'POST', body: payload }),

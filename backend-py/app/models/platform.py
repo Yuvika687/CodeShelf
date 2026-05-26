@@ -230,6 +230,34 @@ class EmailLog(Base):
     error_message: Mapped[str] = mapped_column(Text, default="")
 
 
+class ConceptSource(Base):
+    __tablename__ = "concept_sources"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    note_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("notes.id", ondelete="CASCADE"), nullable=True, index=True)
+    topic: Mapped[str] = mapped_column(String(160), default="General", index=True)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    url: Mapped[str] = mapped_column(String(700), default="")
+    summary: Mapped[str] = mapped_column(Text, default="")
+    source_type: Mapped[str] = mapped_column(String(40), default="internet")
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class ConceptChatNode(Base):
+    __tablename__ = "concept_chat_nodes"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    note_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("notes.id", ondelete="CASCADE"), nullable=True, index=True)
+    parent_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("concept_chat_nodes.id", ondelete="CASCADE"), nullable=True, index=True)
+    topic: Mapped[str] = mapped_column(String(160), default="General", index=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    sources_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class GitHubConnection(Base):
     __tablename__ = "github_connections"
 

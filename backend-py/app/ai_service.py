@@ -14,7 +14,8 @@ CARD_TYPES = ["concept", "why", "complexity", "edge_case", "code_recall", "inter
 def _build_revision_prompt(title: str, topic: str, content: str, subtopic: str = "") -> str:
     subject = f"{title} ({subtopic})" if subtopic else title
     return (
-        "You are an expert coding-interview coach creating deep spaced-repetition revision cards.\n"
+        "You are CodeShelf's senior coding-memory coach. Create revision cards that help a developer "
+        "reconstruct how they learned a concept, not merely recognize definitions.\n"
         f"Topic: {topic}\n"
         f"Title: {subject}\n"
         f"Content:\n{content[:5000]}\n\n"
@@ -56,9 +57,12 @@ def _build_revision_prompt(title: str, topic: str, content: str, subtopic: str =
         '  ]\n'
         "}\n\n"
         "Rules:\n"
-        "- Answers must be detailed, accurate, and directly based on the provided content.\n"
+        "- Answers must be accurate, directly grounded in the provided content, and useful for active recall.\n"
+        "- Include formulas, invariants, recurrences, or time/space complexity whenever the content supports them.\n"
+        "- Include at least one concrete edge case or common wrong approach in the edge_case answer.\n"
         "- The code_recall card MUST include real, runnable code — not pseudocode.\n"
-        "- Keep answers concise but complete (3-8 sentences for non-code cards).\n"
+        "- Keep answers concise but complete: 3-8 sentences for non-code cards, focused code for code_recall.\n"
+        "- Do not invent facts that are absent from the content. If a detail is missing, say what the user should verify.\n"
         "- Do NOT wrap output in ```json``` or any other markdown.\n"
     )
 
