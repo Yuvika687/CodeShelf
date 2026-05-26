@@ -43,6 +43,7 @@ export default function NoteDetail() {
   const [error, setError] = useState('')
   const [expandedCards, setExpandedCards] = useState({})
   const [expandedLongAnswers, setExpandedLongAnswers] = useState({})
+  const [expandedChat, setExpandedChat] = useState({})
 
   useEffect(() => {
     conceptApi.detail(id)
@@ -202,8 +203,23 @@ export default function NoteDetail() {
                 <button className="btn btn-primary"><MessageSquare size={16} /> Ask</button>
               </div>
             </form>
+            <FlowTree nodes={chatTree} selectedId={selectedParent} onPick={(node) => {
+              setSelectedParent(node.id)
+              setQuestion(`Continue from: ${node.question}`)
+            }} />
             <div className="chat-tree-list">
-              {chatTree.map((node) => <ChatNode key={node.id} node={node} onReply={() => setSelectedParent(node.id)} />)}
+              {chatTree.map((node) => (
+                <ChatNode
+                  key={node.id}
+                  node={node}
+                  expanded={Boolean(expandedChat[node.id])}
+                  onToggle={() => setExpandedChat((items) => ({ ...items, [node.id]: !items[node.id] }))}
+                  onReply={() => {
+                    setSelectedParent(node.id)
+                    setQuestion(`Continue from: ${node.question}`)
+                  }}
+                />
+              ))}
               {!chatTree.length ? <p className="muted">Ask one question and CodeShelf will keep the branch here for later recall.</p> : null}
             </div>
           </section>
@@ -263,11 +279,49 @@ export default function NoteDetail() {
   )
 }
 
-function ChatNode({ node, onReply }) {
+function FlowTree({ nodes, selectedId, onPick }) {
+  if (!nodes.length) return null
+  const children = new Map()
+  nodes.forEach((node) => {
+    const key = node.parent_id || 'root'
+    if (!children.has(key)) children.set(key, [])
+    children.get(key).push(node)
+  })
+  const roots = children.get('root') || []
   return (
-    <article className={`chat-node ${node.parent_id ? 'child' : ''}`}>
+    <div className="flow-tree">
+      <div className="flow-root"><GitBranch size={14} /><span>concept</span></div>
+      <div className="flow-branches">
+        {roots.map((node) => <FlowNode key={node.id} node={node} childrenMap={children} selectedId={selectedId} onPick={onPick} />)}
+      </div>
+    </div>
+  )
+}
+
+function FlowNode({ node, childrenMap, selectedId, onPick }) {
+  const kids = childrenMap.get(node.id) || []
+  return (
+    <div className="flow-node-wrap">
+      <button type="button" className={`flow-node ${selectedId === node.id ? 'active' : ''}`} onClick={() => onPick(node)}>
+        <span>{node.question}</span>
+      </button>
+      {kids.length ? (
+        <div className="flow-children">
+          {kids.map((child) => <FlowNode key={child.id} node={child} childrenMap={childrenMap} selectedId={selectedId} onPick={onPick} />)}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function ChatNode({ node, expanded, onToggle, onReply }) {
+  const answer = String(node.answer || '')
+  const isLong = answer.length > 420
+  return (
+    <article className={`chat-node ${node.parent_id ? 'child' : ''} ${expanded ? 'expanded' : ''}`}>
       <div><strong>{node.question}</strong><button type="button" onClick={onReply}>Reply branch</button></div>
-      <p>{node.answer}</p>
+      <p>{expanded || !isLong ? answer : `${answer.slice(0, 420).trim()}...`}</p>
+      {isLong ? <button type="button" className="chat-expand" onClick={onToggle}>{expanded ? 'Collapse' : 'Read full answer'}</button> : null}
       {node.sources?.length ? <small>{node.sources.length} cited source{node.sources.length === 1 ? '' : 's'}</small> : null}
     </article>
   )

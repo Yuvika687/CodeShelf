@@ -5,6 +5,7 @@ import json
 import random
 from datetime import date, datetime, time, timedelta, timezone
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
@@ -55,10 +56,13 @@ def clamp_card_count(value: int) -> int:
 
 
 def prefs_out(prefs: EmailPreference) -> dict:
+    next_send = next_send_time(prefs)
     return {
         "enabled": prefs.enabled,
         "email_time": prefs.email_time.strftime("%H:%M"),
         "timezone": prefs.timezone,
+        "next_send_at": next_send["iso"],
+        "next_send_label": next_send["label"],
         "daily_card_count": prefs.daily_card_count,
         "include_dsa": prefs.include_dsa,
         "include_sql": prefs.include_sql,
@@ -284,6 +288,33 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "unsubscribe_url": unsubscribe,
         "card_ids": [card.id for card in cards[: min(5, target_count)]],
     }
+
+
+def pref_zone(prefs: EmailPreference):
+    try:
+        return ZoneInfo(prefs.timezone)
+    except ZoneInfoNotFoundError:
+        return timezone.utc
+
+
+def next_send_time(prefs: EmailPreference) -> dict[str, str]:
+    zone = pref_zone(prefs)
+    now_local = datetime.now(timezone.utc).astimezone(zone)
+    target = datetime.combine(now_local.date(), prefs.email_time, tzinfo=zone)
+    if target <= now_local:
+        target += timedelta(days=1)
+    return {
+        "iso": target.isoformat(),
+        "label": target.strftime("%a, %d %b at %I:%M %p %Z").replace(" 0", " "),
+    }
+
+
+def daily_window_open(prefs: EmailPreference, now_utc: datetime | None = None, window_minutes: int = 75) -> bool:
+    zone = pref_zone(prefs)
+    local_now = (now_utc or datetime.now(timezone.utc)).astimezone(zone)
+    target = datetime.combine(local_now.date(), prefs.email_time, tzinfo=zone)
+    minutes_after_target = (local_now - target).total_seconds() / 60
+    return 0 <= minutes_after_target < window_minutes
     return {**context, "html": render_daily_html(context), "text": render_daily_text(context)}
 
 
@@ -662,6 +693,10 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
     skipped = 0
     failed = 0
     for user in users:
+        prefs = await ensure_email_preferences(db, user)
+        if builder.__name__ == "build_daily_email" and not daily_window_open(prefs):
+            skipped += 1
+            continue
         payload = await builder(db, user)
         if not payload:
             skipped += 1

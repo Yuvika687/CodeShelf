@@ -40,6 +40,7 @@ export default function EmailSettings() {
     if (!prefs?.enabled) return 'Paused'
     return `${prefs.daily_card_count} cards at ${prefs.email_time}`
   }, [prefs])
+  const scheduleLine = prefs?.enabled ? `Next eligible send: ${prefs.next_send_label || 'after the next cron window'}` : 'Daily emails are paused.'
 
   const update = (key, value) => setPrefs((current) => ({ ...current, [key]: value }))
 
@@ -114,6 +115,12 @@ export default function EmailSettings() {
         </section>
       ) : null}
 
+      <div className="email-schedule-strip">
+        <Clock size={16} />
+        <strong>{scheduleLine}</strong>
+        <span>Render/cron must call `/api/email/cron-daily`; CodeShelf sends only inside the saved time window and skips duplicate daily sends.</span>
+      </div>
+
       <div className="email-brain-grid">
         <section className="email-simple-panel">
           <div className="email-panel-head">
@@ -122,7 +129,7 @@ export default function EmailSettings() {
           </div>
 
           <div className="email-pill-grid">
-            <SmartPill icon={Clock} label="Morning" value={prefs.email_time} />
+            <SmartPill icon={Clock} label="Saved time" value={prefs.email_time} />
             <SmartPill icon={Bell} label="Cards" value={`${prefs.daily_card_count}/day`} />
             <SmartPill icon={ShieldCheck} label="Safety" value="2/day cap" />
           </div>

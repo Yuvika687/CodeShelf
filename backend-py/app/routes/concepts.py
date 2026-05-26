@@ -179,7 +179,7 @@ async def cached_sources(db: AsyncSession, user: User, note: Note) -> list[Conce
 
 async def fetch_public_sources(query: str) -> list[dict]:
     sources: list[dict] = []
-    headers = {"User-Agent": "CodeShelf/1.0 concept memory"}
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; CodeShelfBot/1.0; +https://codeshelf.local)"}
     async with httpx.AsyncClient(timeout=8, headers=headers, follow_redirects=True) as client:
         try:
             wiki = await client.get(
@@ -214,7 +214,7 @@ async def fetch_public_sources(query: str) -> list[dict]:
                     }
                 )
             for item in data.get("RelatedTopics", [])[:5]:
-                if isinstance(item, dict) and item.get("Text") and item.get("FirstURL"):
+                if isinstance(item, dict) and item.get("Text") and item.get("FirstURL") and "duckduckgo.com/c/" not in item.get("FirstURL", ""):
                     sources.append(
                         {
                             "title": short(item["Text"].split(" - ")[0], 90),
@@ -323,7 +323,7 @@ async def concept_detail(note_id: str, user: User = Depends(get_current_user), d
 @router.post("/notes/{note_id}/research")
 async def research_concept(note_id: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     note = await get_owned_note(db, user, note_id)
-    query = " ".join(part for part in [note.title, note.topic, note.subtopic, "formula complexity code pattern"] if part)
+    query = " ".join(part for part in [note.title, note.topic, note.subtopic] if part)
     rows = await fetch_public_sources(query)
     sources = await save_sources(db, user, note, rows)
     return {"sources": [source_out(source) for source in sources], "fetched": len(rows)}
@@ -333,7 +333,7 @@ async def research_concept(note_id: str, user: User = Depends(get_current_user),
 async def reconstruct_concept(body: ReconstructIn, note_id: str, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     note = await get_owned_note(db, user, note_id)
     if body.include_internet and not await cached_sources(db, user, note):
-        rows = await fetch_public_sources(" ".join([note.title, note.topic, "formula complexity code pattern"]))
+        rows = await fetch_public_sources(" ".join([note.title, note.topic, note.subtopic]))
         await save_sources(db, user, note, rows)
     memory = await local_memory(db, user, note)
     sources = [source_out(source) for source in await cached_sources(db, user, note)]
@@ -355,12 +355,13 @@ async def chat_concept(body: ChatIn, note_id: str, user: User = Depends(get_curr
         "Answer as CodeShelf's recall coach inside a persistent chat tree. "
         "The user is trying to recover a concept they once learned. Use this response structure:\n"
         "1. Memory hook: one sentence connecting the concept to the user's saved note/problem/mistake.\n"
-        "2. Core explanation: concise but complete.\n"
+        "2. Core explanation: concise but complete, maximum 5 bullet-like lines.\n"
         "3. Formula/code/invariant: include concrete syntax, Big-O, recurrence, state transition, or command pattern when relevant.\n"
         "4. Edge case or common mistake: show how to avoid it.\n"
         "5. Recall check: one question the user should answer from memory.\n"
         "Ground the answer in local memory first. Use internet sources only as supporting context. "
-        "If the saved data is insufficient, say exactly what is missing instead of hallucinating.\n\n"
+        "If the saved data is insufficient, say exactly what is missing instead of hallucinating. "
+        "Keep the whole answer under 170 words unless the user explicitly asks for a long deep dive.\n\n"
         f"User question: {question}\nConcept: {note.title} / {note.topic}\n"
         f"Saved note: {short(note.content, 2600)}\nSaved code: {short(note.code_snippet, 1000)}\n"
         f"Local memory JSON: {json.dumps(memory, default=str)[:3600]}\nSources: {json.dumps(sources)[:1800]}"

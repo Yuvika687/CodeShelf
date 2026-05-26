@@ -67,6 +67,11 @@ export default function Home() {
         </div>
         <span className="cmd-tag">// memory_engine</span>
         <p className="cmd-sub">Your coding knowledge neural network</p>
+        <div className="streak-beacon">
+          <Flame size={18} />
+          <strong>{streak} day streak</strong>
+          <span>Longest: {db?.streak?.longest || 0}</span>
+        </div>
         <div className="cmd-cta">
           <Link className="btn btn-primary cmd-glow clickable" to="/revision/today"><Brain size={15}/> Start Revision</Link>
           <Link className="btn btn-secondary clickable" to="/add-note"><Plus size={15}/> Add Learning</Link>
