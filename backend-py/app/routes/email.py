@@ -288,6 +288,7 @@ async def build_daily_email(db: AsyncSession, user: User) -> dict:
         "unsubscribe_url": unsubscribe,
         "card_ids": [card.id for card in cards[: min(5, target_count)]],
     }
+    return {**context, "html": render_daily_html(context), "text": render_daily_text(context)}
 
 
 def pref_zone(prefs: EmailPreference):
@@ -315,7 +316,6 @@ def daily_window_open(prefs: EmailPreference, now_utc: datetime | None = None, w
     target = datetime.combine(local_now.date(), prefs.email_time, tzinfo=zone)
     minutes_after_target = (local_now - target).total_seconds() / 60
     return 0 <= minutes_after_target < window_minutes
-    return {**context, "html": render_daily_html(context), "text": render_daily_text(context)}
 
 
 async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
@@ -676,7 +676,7 @@ async def send_email(db: AsyncSession, user: User, payload: dict) -> dict:
             recipient=user.email,
             subject=payload["subject"],
             body="",
-            card_ids=",".join(payload.get("card_ids", [])),
+            card_ids=",".join(str(card_id) for card_id in payload.get("card_ids", [])),
             provider_message_id=message_id,
             status=status,
             error_message=error_message,
@@ -797,7 +797,10 @@ async def send_test(user: User = Depends(get_current_user), db: AsyncSession = D
 async def send_daily(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Verify your email before sending reminders.")
-    return await send_email(db, user, await build_daily_email(db, user))
+    payload = await build_daily_email(db, user)
+    if not payload:
+        raise HTTPException(status_code=400, detail="No email payload could be built for this user.")
+    return await send_email(db, user, payload)
 
 
 @router.post("/cron-daily")
