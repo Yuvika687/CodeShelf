@@ -376,6 +376,14 @@ def daily_window_open(prefs: EmailPreference, now_utc: datetime | None = None, w
     return 0 <= minutes_after_target < window_minutes
 
 
+def local_day_bounds_utc(prefs: EmailPreference, now_utc: datetime | None = None) -> tuple[datetime, datetime]:
+    zone = pref_zone(prefs)
+    local_now = (now_utc or datetime.now(timezone.utc)).astimezone(zone)
+    local_start = datetime.combine(local_now.date(), time.min, tzinfo=zone)
+    local_end = local_start + timedelta(days=1)
+    return local_start.astimezone(timezone.utc), local_end.astimezone(timezone.utc)
+
+
 async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
     if not user.email_verified:
         return {}
@@ -726,7 +734,11 @@ async def send_email(db: AsyncSession, user: User, payload: dict) -> dict:
             status = "failed"
             error_message = str(exc)
     else:
-        print(f"\n--- CodeShelf email preview to {user.email} ---\nSubject: {payload['subject']}\n{payload['text']}\n")
+        if settings.environment.lower() == "production":
+            status = "failed"
+            error_message = "RESEND_API_KEY is not configured; email was not sent."
+        else:
+            print(f"\n--- CodeShelf email preview to {user.email} ---\nSubject: {payload['subject']}\n{payload['text']}\n")
 
     db.add(
         EmailLog(
@@ -751,23 +763,30 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
     sent = 0
     skipped = 0
     failed = 0
+    skipped_outside_window = 0
+    skipped_duplicate = 0
+    skipped_empty_payload = 0
+    failed_details = []
     for user in users:
         prefs = await ensure_email_preferences(db, user)
         if builder.__name__ == "build_daily_email" and not daily_window_open(prefs):
             skipped += 1
+            skipped_outside_window += 1
             continue
         payload = await builder(db, user)
         if not payload:
             skipped += 1
+            skipped_empty_payload += 1
             continue
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start, day_end = local_day_bounds_utc(prefs)
         duplicate = (
             await db.execute(
                 select(EmailLog.id)
                 .where(
                     EmailLog.user_id == user.id,
                     EmailLog.email_type == payload["email_type"],
-                    EmailLog.sent_at >= today_start,
+                    EmailLog.sent_at >= day_start,
+                    EmailLog.sent_at < day_end,
                     EmailLog.status.in_(["sent", "printed"]),
                 )
                 .limit(1)
@@ -775,11 +794,23 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
         ).scalar_one_or_none()
         if duplicate:
             skipped += 1
+            skipped_duplicate += 1
             continue
         outcome = await send_email(db, user, payload)
         sent += 1 if outcome["status"] in {"sent", "printed"} else 0
-        failed += 1 if outcome["status"] == "failed" else 0
-    return {"users": len(users), "sent": sent, "skipped": skipped, "failed": failed}
+        if outcome["status"] == "failed":
+            failed += 1
+            failed_details.append({"user_id": user.id, "email": user.email, "error": outcome.get("error_message", "")[:300]})
+    return {
+        "users": len(users),
+        "sent": sent,
+        "skipped": skipped,
+        "failed": failed,
+        "skipped_outside_window": skipped_outside_window,
+        "skipped_duplicate": skipped_duplicate,
+        "skipped_empty_payload": skipped_empty_payload,
+        "failed_details": failed_details[:10],
+    }
 
 
 async def apply_email_review(db: AsyncSession, user_id: str, card_id: str, rating: str) -> bool:
@@ -851,7 +882,12 @@ async def preview_email(user: User = Depends(get_current_user), db: AsyncSession
 async def send_test(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Verify your email before sending test reminders.")
-    return await send_daily(user, db)
+    payload = await build_daily_email(db, user)
+    if not payload:
+        raise HTTPException(status_code=400, detail="No email payload could be built for this user.")
+    payload["email_type"] = "test_daily_revision"
+    payload["subject"] = f"[Test] {payload['subject']}"
+    return await send_email(db, user, payload)
 
 
 @router.post("/send-daily")

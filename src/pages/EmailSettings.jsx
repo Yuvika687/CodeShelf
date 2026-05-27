@@ -80,7 +80,7 @@ export default function EmailSettings() {
     await run('save', async () => {
       const data = await emailApi.updatePreferences(nextPrefs)
       setPrefs(data.preferences)
-      setMessage('Email brain saved.')
+      setMessage(`Email settings saved. Next daily email is eligible ${data.preferences.next_send_label || 'at the next cron window'}.`)
     })
   }
 
@@ -100,6 +100,10 @@ export default function EmailSettings() {
       const data = await emailApi.sendTest()
       if (data.status === 'failed') {
         throw new Error(data.error_message || 'Email provider rejected the test email.')
+      }
+      if (data.status === 'printed') {
+        setMessage('Test email was printed in backend logs because RESEND_API_KEY is not configured for this environment.')
+        return
       }
       setMessage(`Test email ${data.status}. Check ${user?.email || 'your verified inbox'}.`)
     })

@@ -39,7 +39,7 @@ services:
   - type: cron
     name: codeshelf-daily-email
     env: python
-    schedule: "0 2 * * *"
+    schedule: "*/30 * * * *"
     buildCommand: pip install -r requirements.txt
     startCommand: python -c "import os, httpx; httpx.post(os.environ['BACKEND_URL'].rstrip('/') + '/api/email/cron-daily', headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=60)"
     envVars:
