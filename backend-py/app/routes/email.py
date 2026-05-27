@@ -410,6 +410,38 @@ def local_day_bounds_utc(prefs: EmailPreference, now_utc: datetime | None = None
     return local_start.astimezone(timezone.utc), local_end.astimezone(timezone.utc)
 
 
+def slot_bounds_utc(slot: datetime) -> tuple[datetime, datetime]:
+    return slot.astimezone(timezone.utc), (slot + timedelta(minutes=75)).astimezone(timezone.utc)
+
+
+async def duplicate_email_log_id(db: AsyncSession, user: User, email_type: str, start: datetime, end: datetime) -> str | None:
+    return (
+        await db.execute(
+            select(EmailLog.id)
+            .where(
+                EmailLog.user_id == user.id,
+                EmailLog.email_type == email_type,
+                EmailLog.sent_at >= start,
+                EmailLog.sent_at < end,
+                EmailLog.status.in_(["sent", "printed"]),
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+def email_log_out(log: EmailLog) -> dict:
+    return {
+        "id": log.id,
+        "email_type": log.email_type,
+        "recipient": log.recipient,
+        "subject": log.subject,
+        "status": log.status,
+        "error_message": log.error_message,
+        "sent_at": log.sent_at.isoformat() if log.sent_at else "",
+    }
+
+
 async def build_weekly_digest(db: AsyncSession, user: User) -> dict:
     if not user.email_verified:
         return {}
@@ -581,20 +613,24 @@ def render_email_action_html(title: str, message: str, rating: str = "", result:
 
 
 def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
-    sprint_cards = [
-        {
+    sprint_cards = []
+    for card in cards:
+        options, correct_label = option_set(card)
+        sprint_cards.append(
+            {
             "id": card.id,
             "question": card.question,
             "answer": card.answer,
             "topic": card.topic,
             "difficulty": card.difficulty,
+            "options": options,
+            "correct_label": correct_label,
             "token": create_email_token(
                 {"sub": user.id, "card_id": card.id, "type": "email_review_card"},
                 hours=24,
             ),
-        }
-        for card in cards
-    ]
+            }
+        )
     data = json.dumps(sprint_cards).replace("</", "<\\/")
     return f"""
     <!doctype html>
@@ -613,12 +649,18 @@ def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
           .hero span {{ color: #93c5fd; }}
           .body {{ padding: 24px; }}
           .intro {{ color: #475569; font-size: 17px; line-height: 1.55; margin: 0 0 18px; }}
-          .battle-btn, .rate button, .open-app {{ border: 0; border-radius: 12px; padding: 13px 16px; font-weight: 800; font-size: 15px; cursor: pointer; }}
+          .battle-btn, .rate button, .options button, .open-app {{ border: 0; border-radius: 12px; padding: 13px 16px; font-weight: 800; font-size: 15px; cursor: pointer; }}
           .battle-btn {{ width: 100%; background: #2563eb; color: white; font-size: 17px; }}
           .card {{ display: none; margin-top: 18px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f8fafc; }}
           .card.active {{ display: block; }}
           .meta {{ margin: 0 0 8px; color: #64748b; font-size: 13px; font-weight: 700; }}
           h2 {{ margin: 0 0 14px; font-size: clamp(22px, 5vw, 30px); line-height: 1.25; }}
+          .options {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }}
+          .options button {{ display: flex; align-items: flex-start; gap: 10px; min-height: 72px; background: #ffffff; color: #172033; border: 1px solid #cbd5e1; text-align: left; line-height: 1.35; }}
+          .options span {{ display: inline-grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 999px; background: #172033; color: #ffffff; font-size: 13px; }}
+          .options button.correct {{ border-color: #16a34a; background: #dcfce7; }}
+          .options button.wrong {{ border-color: #dc2626; background: #fee2e2; }}
+          .options button:disabled {{ cursor: default; opacity: 1; }}
           .answer {{ display: none; margin: 14px 0; padding: 14px; border-radius: 12px; background: #fff; border: 1px solid #e2e8f0; white-space: pre-wrap; }}
           .answer.show {{ display: block; }}
           .rate {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }}
@@ -631,7 +673,7 @@ def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
           .done {{ display: none; text-align: center; padding: 22px 0 4px; }}
           .done h2 {{ color: #16a34a; }}
           .open-app {{ display: inline-block; margin-top: 10px; background: #172033; color: #fff; text-decoration: none; }}
-          @media (max-width: 520px) {{ .hero, .body {{ padding: 20px; }} .rate {{ grid-template-columns: 1fr; }} }}
+          @media (max-width: 520px) {{ .hero, .body {{ padding: 20px; }} .options, .rate {{ grid-template-columns: 1fr; }} }}
         </style>
       </head>
       <body>
@@ -665,6 +707,14 @@ def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
             <article class="card" data-index="${{i}}">
               <p class="meta">Question ${{i + 1}} / ${{cards.length}} · ${{escapeHtml(card.topic || 'General')}} · ${{escapeHtml(card.difficulty || 'Medium')}}</p>
               <h2>${{escapeHtml(card.question)}}</h2>
+              <div class="options" id="options-${{i}}">
+                ${{card.options.map(option => `
+                  <button type="button" data-choice="${{i}}" data-label="${{escapeHtml(option.label)}}">
+                    <span>${{escapeHtml(option.label)}}</span>
+                    ${{escapeHtml(option.text)}}
+                  </button>
+                `).join('')}}
+              </div>
               <button class="battle-btn show" type="button" data-show="${{i}}">Show answer</button>
               <div class="answer" id="answer-${{i}}">${{escapeHtml(card.answer)}}</div>
               <div class="rate">
@@ -689,41 +739,70 @@ def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
             document.getElementById('start').style.display = 'none';
             showCard(0);
           }});
+          function finishCard(i) {{
+            completed += 1;
+            updateProgress();
+            setTimeout(() => {{
+              index += 1;
+              if (index >= cards.length) {{
+                document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
+                done.style.display = 'block';
+              }} else {{
+                showCard(index);
+              }}
+            }}, 900);
+          }}
+          async function saveReview(i, rating, successText) {{
+            const card = cards[i];
+            const status = document.getElementById(`status-${{i}}`);
+            const panel = document.querySelector(`[data-index="${{i}}"]`);
+            panel.querySelectorAll('button').forEach(item => item.disabled = true);
+            status.textContent = 'Saving...';
+            const response = await fetch('/api/email/session-review', {{
+              method: 'POST',
+              headers: {{ 'Content-Type': 'application/json' }},
+              body: JSON.stringify({{ token: card.token, rating }})
+            }});
+            if (!response.ok) throw new Error('Could not save this answer.');
+            status.textContent = successText;
+            finishCard(i);
+          }}
           root.addEventListener('click', async (event) => {{
             const show = event.target.closest('[data-show]');
             if (show) {{
               document.getElementById(`answer-${{show.dataset.show}}`).classList.add('show');
               return;
             }}
+            const option = event.target.closest('[data-choice]');
+            if (option && !option.disabled) {{
+              const i = Number(option.dataset.choice);
+              const card = cards[i];
+              const selected = option.dataset.label;
+              const correct = selected === card.correct_label;
+              const options = option.closest('.options');
+              options.querySelectorAll('button').forEach(item => {{
+                item.disabled = true;
+                if (item.dataset.label === card.correct_label) item.classList.add('correct');
+              }});
+              if (!correct) option.classList.add('wrong');
+              document.getElementById(`answer-${{i}}`).classList.add('show');
+              try {{
+                await saveReview(i, correct ? 'good' : 'hard', correct ? 'Correct. Saved to CodeShelf.' : 'Saved as hard. Review the answer once.');
+              }} catch (error) {{
+                document.getElementById(`status-${{i}}`).textContent = error.message || 'Save failed. Try again.';
+                options.querySelectorAll('button').forEach(item => item.disabled = false);
+              }}
+              return;
+            }}
             const button = event.target.closest('[data-rate]');
             if (!button || button.disabled) return;
             const i = Number(button.dataset.rate);
-            const card = cards[i];
             const status = document.getElementById(`status-${{i}}`);
-            button.closest('.rate').querySelectorAll('button').forEach(item => item.disabled = true);
-            status.textContent = 'Saving...';
             try {{
-              const response = await fetch('/api/email/session-review', {{
-                method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }},
-                body: JSON.stringify({{ token: card.token, rating: button.dataset.rating }})
-              }});
-              if (!response.ok) throw new Error('Could not save this answer.');
-              completed += 1;
-              updateProgress();
-              status.textContent = 'Saved to CodeShelf.';
-              setTimeout(() => {{
-                index += 1;
-                if (index >= cards.length) {{
-                  document.querySelectorAll('.card').forEach(card => card.classList.remove('active'));
-                  done.style.display = 'block';
-                }} else {{
-                  showCard(index);
-                }}
-              }}, 450);
+              await saveReview(i, button.dataset.rating, 'Saved to CodeShelf.');
             }} catch (error) {{
               status.textContent = error.message || 'Save failed. Try again.';
-              button.closest('.rate').querySelectorAll('button').forEach(item => item.disabled = false);
+              document.querySelector(`[data-index="${{i}}"]`).querySelectorAll('button').forEach(item => item.disabled = false);
             }}
           }});
           updateProgress();
@@ -808,23 +887,10 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
             skipped_empty_payload += 1
             continue
         if daily_slot:
-            day_start = daily_slot.astimezone(timezone.utc)
-            day_end = (daily_slot + timedelta(minutes=75)).astimezone(timezone.utc)
+            day_start, day_end = slot_bounds_utc(daily_slot)
         else:
             day_start, day_end = local_day_bounds_utc(prefs)
-        duplicate = (
-            await db.execute(
-                select(EmailLog.id)
-                .where(
-                    EmailLog.user_id == user.id,
-                    EmailLog.email_type == payload["email_type"],
-                    EmailLog.sent_at >= day_start,
-                    EmailLog.sent_at < day_end,
-                    EmailLog.status.in_(["sent", "printed"]),
-                )
-                .limit(1)
-            )
-        ).scalar_one_or_none()
+        duplicate = await duplicate_email_log_id(db, user, payload["email_type"], day_start, day_end)
         if duplicate:
             skipped += 1
             skipped_duplicate += 1
@@ -880,6 +946,38 @@ async def get_preferences(user: User = Depends(get_current_user), db: AsyncSessi
     return {"preferences": prefs_out(prefs)}
 
 
+@router.get("/status")
+async def email_status(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    prefs = await ensure_email_preferences(db, user)
+    zone = pref_zone(prefs)
+    now_utc = datetime.now(timezone.utc)
+    local_now = now_utc.astimezone(zone)
+    slot = current_daily_slot(prefs, now_utc)
+    recent_logs = (
+        await db.execute(
+            select(EmailLog)
+            .where(EmailLog.user_id == user.id, EmailLog.email_type.in_(["daily_revision", "test_daily_revision"]))
+            .order_by(EmailLog.sent_at.desc())
+            .limit(8)
+        )
+    ).scalars().all()
+    duplicate = None
+    if slot:
+        start, end = slot_bounds_utc(slot)
+        duplicate = await duplicate_email_log_id(db, user, "daily_revision", start, end)
+    return {
+        "enabled": prefs.enabled,
+        "email_verified": user.email_verified,
+        "local_time": local_now.strftime("%a, %d %b %I:%M %p %Z").replace(" 0", " "),
+        "current_slot": slot.strftime("%H:%M") if slot else "",
+        "current_slot_open": bool(slot),
+        "current_slot_already_sent": bool(duplicate),
+        "next_send_label": next_send_time(prefs)["label"],
+        "send_times": daily_send_labels(prefs),
+        "recent_logs": [email_log_out(log) for log in recent_logs],
+    }
+
+
 @router.put("/preferences")
 async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if body.enabled and not user.email_verified:
@@ -922,6 +1020,27 @@ async def send_test(user: User = Depends(get_current_user), db: AsyncSession = D
     payload["email_type"] = "test_daily_revision"
     payload["subject"] = f"[Test] {payload['subject']}"
     return await send_email(db, user, payload)
+
+
+@router.post("/send-due-now")
+async def send_due_now(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if not user.email_verified:
+        raise HTTPException(status_code=403, detail="Verify your email before sending reminders.")
+    prefs = await ensure_email_preferences(db, user)
+    if not prefs.enabled:
+        return {"status": "skipped", "reason": "Daily emails are paused. Enable reminders first.", "next_send_label": next_send_time(prefs)["label"]}
+    slot = current_daily_slot(prefs)
+    if not slot:
+        return {"status": "skipped", "reason": "No scheduled email slot is open right now.", "next_send_label": next_send_time(prefs)["label"]}
+    start, end = slot_bounds_utc(slot)
+    duplicate = await duplicate_email_log_id(db, user, "daily_revision", start, end)
+    if duplicate:
+        return {"status": "skipped", "reason": f"The {slot.strftime('%H:%M')} slot already sent.", "next_send_label": next_send_time(prefs)["label"]}
+    payload = await build_daily_email(db, user)
+    if not payload:
+        raise HTTPException(status_code=400, detail="No email payload could be built for this user.")
+    outcome = await send_email(db, user, payload)
+    return {**outcome, "slot": slot.strftime("%H:%M"), "next_send_label": next_send_time(prefs)["label"]}
 
 
 @router.post("/send-daily")

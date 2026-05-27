@@ -143,9 +143,11 @@ export const revisionApi = {
 
 export const emailApi = {
   preferences: () => api('/email/preferences'),
+  status: () => api('/email/status'),
   updatePreferences: (payload) => api('/email/preferences', { method: 'PUT', body: payload }),
   preview: () => api('/email/preview', { method: 'POST' }),
   sendTest: () => api('/email/send-test', { method: 'POST' }),
+  sendDueNow: () => api('/email/send-due-now', { method: 'POST' }),
 }
 
 export const conceptApi = {
