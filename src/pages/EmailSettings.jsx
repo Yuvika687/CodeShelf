@@ -8,6 +8,7 @@ const recommendedPrefs = {
   enabled: true,
   email_time: '08:00',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Calcutta',
+  emails_per_day: 1,
   daily_card_count: 5,
   include_dsa: true,
   include_sql: true,
@@ -44,9 +45,16 @@ export default function EmailSettings() {
 
   const enabledSummary = useMemo(() => {
     if (!prefs?.enabled) return 'Paused'
-    return `${prefs.daily_card_count} cards at ${prefs.email_time}`
+    return `${prefs.emails_per_day || 1} email${(prefs.emails_per_day || 1) === 1 ? '' : 's'}/day from ${prefs.email_time}`
   }, [prefs])
   const scheduleLine = prefs?.enabled ? `Next eligible send: ${prefs.next_send_label || 'after the next cron window'}` : 'Daily emails are paused.'
+  const sendTimes = useMemo(() => {
+    const [hour, minute] = String(prefs?.email_time || '').split(':').map(Number)
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return prefs?.send_times || []
+    const count = Math.max(1, Math.min(10, Number(prefs?.emails_per_day) || 1))
+    return Array.from({ length: count }, (_, index) => `${String((hour + index) % 24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+  }, [prefs])
+  const slotLine = sendTimes.length ? `Today's slots: ${sendTimes.join(', ')}` : 'Saved time becomes the first email slot.'
   const topics = useMemo(() => Array.from(new Set(notes.map((note) => note.topic).filter(Boolean))).sort(), [notes])
   const scopedNotes = useMemo(() => {
     const selectedTopics = prefs?.selected_topics || []
@@ -130,7 +138,7 @@ export default function EmailSettings() {
         <div className="email-status-orb">
           <Mail size={30} />
           <strong>{enabledSummary}</strong>
-          <span>Max 2 emails/day</span>
+          <span>{prefs.daily_card_count} cards each</span>
         </div>
       </section>
 
@@ -144,7 +152,7 @@ export default function EmailSettings() {
       <div className="email-schedule-strip">
         <Clock size={16} />
         <strong>{scheduleLine}</strong>
-        <span>Render/cron must call `/api/email/cron-daily`; CodeShelf sends only inside the saved time window and skips duplicate daily sends.</span>
+        <span>{slotLine}</span>
       </div>
 
       <div className="email-brain-grid">
@@ -156,9 +164,19 @@ export default function EmailSettings() {
 
           <div className="email-pill-grid">
             <SmartPill icon={Clock} label="Saved time" value={prefs.email_time} />
-            <SmartPill icon={Bell} label="Cards" value={`${prefs.daily_card_count}/day`} />
+            <SmartPill icon={Mail} label="Emails" value={`${prefs.emails_per_day || 1}/day`} />
+            <SmartPill icon={Bell} label="Cards" value={`${prefs.daily_card_count}/email`} />
             <SmartPill icon={Flame} label="Streak" value={`${user?.current_streak || 0} days`} />
-            <SmartPill icon={ShieldCheck} label="Safety" value="2/day cap" />
+          </div>
+
+          <Field label="How many emails per day?">
+            <input className="input" type="range" min="1" max="10" value={prefs.emails_per_day || 1} onChange={(e) => update('emails_per_day', Number(e.target.value))} />
+          </Field>
+
+          <div className="email-count-strip">
+            {[1, 2, 3, 5, 10].map((count) => (
+              <button key={count} type="button" className={(prefs.emails_per_day || 1) === count ? 'active' : ''} onClick={() => update('emails_per_day', count)}>{count}</button>
+            ))}
           </div>
 
           <Field label="How many cards per email?">

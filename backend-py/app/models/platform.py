@@ -199,6 +199,7 @@ class EmailPreference(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     email_time: Mapped[time] = mapped_column(Time, default=lambda: time(8, 0))
     timezone: Mapped[str] = mapped_column(String(80), default="Asia/Calcutta")
+    emails_per_day: Mapped[int] = mapped_column(Integer, default=1)
     daily_card_count: Mapped[int] = mapped_column(Integer, default=5)
     include_dsa: Mapped[bool] = mapped_column(Boolean, default=True)
     include_sql: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -30,6 +30,7 @@ class EmailPreferencesIn(BaseModel):
     enabled: bool = False
     email_time: str = "08:00"
     timezone: str = "Asia/Calcutta"
+    emails_per_day: int = 1
     daily_card_count: int = 5
     include_dsa: bool = True
     include_sql: bool = True
@@ -55,6 +56,10 @@ def parse_time(value: str) -> time:
 
 def clamp_card_count(value: int) -> int:
     return max(3, min(10, int(value or 5)))
+
+
+def clamp_email_count(value: int) -> int:
+    return max(1, min(10, int(value or 1)))
 
 
 def parse_json_list(value: str) -> list[str]:
@@ -87,6 +92,8 @@ def prefs_out(prefs: EmailPreference) -> dict:
         "enabled": prefs.enabled,
         "email_time": prefs.email_time.strftime("%H:%M"),
         "timezone": prefs.timezone,
+        "emails_per_day": clamp_email_count(prefs.emails_per_day),
+        "send_times": daily_send_labels(prefs),
         "next_send_at": next_send["iso"],
         "next_send_label": next_send["label"],
         "daily_card_count": prefs.daily_card_count,
@@ -356,24 +363,43 @@ def pref_zone(prefs: EmailPreference):
         return timezone.utc
 
 
+def daily_send_slots(prefs: EmailPreference, local_day: date) -> list[datetime]:
+    zone = pref_zone(prefs)
+    first_slot = datetime.combine(local_day, prefs.email_time, tzinfo=zone)
+    return [first_slot + timedelta(hours=index) for index in range(clamp_email_count(prefs.emails_per_day))]
+
+
+def daily_send_labels(prefs: EmailPreference) -> list[str]:
+    zone = pref_zone(prefs)
+    today_local = datetime.now(timezone.utc).astimezone(zone).date()
+    return [slot.strftime("%H:%M") for slot in daily_send_slots(prefs, today_local)]
+
+
 def next_send_time(prefs: EmailPreference) -> dict[str, str]:
     zone = pref_zone(prefs)
     now_local = datetime.now(timezone.utc).astimezone(zone)
-    target = datetime.combine(now_local.date(), prefs.email_time, tzinfo=zone)
-    if target <= now_local:
-        target += timedelta(days=1)
+    slots = daily_send_slots(prefs, now_local.date()) + daily_send_slots(prefs, now_local.date() + timedelta(days=1))
+    target = next((slot for slot in slots if slot > now_local), slots[-1])
     return {
         "iso": target.isoformat(),
         "label": target.strftime("%a, %d %b at %I:%M %p %Z").replace(" 0", " "),
     }
 
 
-def daily_window_open(prefs: EmailPreference, now_utc: datetime | None = None, window_minutes: int = 75) -> bool:
+def current_daily_slot(prefs: EmailPreference, now_utc: datetime | None = None, window_minutes: int = 75) -> datetime | None:
     zone = pref_zone(prefs)
     local_now = (now_utc or datetime.now(timezone.utc)).astimezone(zone)
-    target = datetime.combine(local_now.date(), prefs.email_time, tzinfo=zone)
-    minutes_after_target = (local_now - target).total_seconds() / 60
-    return 0 <= minutes_after_target < window_minutes
+    slots = daily_send_slots(prefs, local_now.date() - timedelta(days=1)) + daily_send_slots(prefs, local_now.date())
+    eligible = []
+    for slot in slots:
+        minutes_after_slot = (local_now - slot).total_seconds() / 60
+        if 0 <= minutes_after_slot < window_minutes:
+            eligible.append(slot)
+    return eligible[-1] if eligible else None
+
+
+def daily_window_open(prefs: EmailPreference, now_utc: datetime | None = None, window_minutes: int = 75) -> bool:
+    return current_daily_slot(prefs, now_utc, window_minutes) is not None
 
 
 def local_day_bounds_utc(prefs: EmailPreference, now_utc: datetime | None = None) -> tuple[datetime, datetime]:
@@ -769,16 +795,23 @@ async def send_to_enabled_users(db: AsyncSession, builder) -> dict:
     failed_details = []
     for user in users:
         prefs = await ensure_email_preferences(db, user)
-        if builder.__name__ == "build_daily_email" and not daily_window_open(prefs):
-            skipped += 1
-            skipped_outside_window += 1
-            continue
+        daily_slot = None
+        if builder.__name__ == "build_daily_email":
+            daily_slot = current_daily_slot(prefs)
+            if not daily_slot:
+                skipped += 1
+                skipped_outside_window += 1
+                continue
         payload = await builder(db, user)
         if not payload:
             skipped += 1
             skipped_empty_payload += 1
             continue
-        day_start, day_end = local_day_bounds_utc(prefs)
+        if daily_slot:
+            day_start = daily_slot.astimezone(timezone.utc)
+            day_end = (daily_slot + timedelta(minutes=75)).astimezone(timezone.utc)
+        else:
+            day_start, day_end = local_day_bounds_utc(prefs)
         duplicate = (
             await db.execute(
                 select(EmailLog.id)
@@ -855,6 +888,7 @@ async def update_preferences(body: EmailPreferencesIn, user: User = Depends(get_
     prefs.enabled = body.enabled
     prefs.email_time = parse_time(body.email_time)
     prefs.timezone = body.timezone
+    prefs.emails_per_day = clamp_email_count(body.emails_per_day)
     prefs.daily_card_count = clamp_card_count(body.daily_card_count)
     prefs.include_dsa = body.include_dsa
     prefs.include_sql = body.include_sql
