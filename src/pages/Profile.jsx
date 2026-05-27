@@ -21,7 +21,7 @@ export default function Profile() {
   const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Explorer'
 
   return (
-    <div className="pro-cmd">
+    <div className="page pro-cmd">
       <NebulaParticles starCount={100} nebulaCount={4} />
       <div className="pro-scan" aria-hidden="true" />
 

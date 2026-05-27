@@ -57,7 +57,7 @@ export default function TodayRevision() {
   }
 
   return (
-    <div className="rev-cmd">
+    <div className="page rev-cmd">
       <NebulaParticles starCount={90} nebulaCount={3} />
       <div className="rev-scan" aria-hidden="true" />
 

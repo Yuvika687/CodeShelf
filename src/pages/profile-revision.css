@@ -1,6 +1,7 @@
 /* ===== PROFILE CMD ===== */
 .pro-cmd,.rev-cmd{position:relative;width:min(1220px,100%);margin:0 auto;display:grid;gap:20px;animation:pageIn .45s var(--ease) both}
 .pro-scan,.rev-scan{position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 48%,rgba(139,92,246,.03) 50%,transparent 52%);background-size:100% 8px;z-index:0;opacity:.5}
+.pro-cmd .nebula-canvas,.rev-cmd .nebula-canvas{position:absolute;inset:0;width:100%!important;height:100%!important;pointer-events:none;z-index:0;opacity:.5}
 
 /* Hero */
 .pro-hero{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:32px;border:1px solid var(--border);border-radius:28px;background:radial-gradient(circle at 15% 30%,rgba(139,92,246,.25),transparent 50%),radial-gradient(circle at 85% 70%,rgba(98,213,200,.12),transparent 40%),var(--card);box-shadow:var(--shadow-soft)}

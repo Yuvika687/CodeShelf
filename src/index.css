@@ -2454,6 +2454,15 @@ body.light-theme .revision-cards-count {
   min-width: 220px;
 }
 
+/* Canvas cursor */
+.cursor-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Legacy cursor removed — now canvas-based */
 .cursor-dot,
 .cursor-ring {
   position: fixed;

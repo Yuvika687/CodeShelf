@@ -91,21 +91,19 @@ export default function NebulaParticles({ className = '', starCount = 90, nebula
         }
       })
 
-      for (let i = 0; i < stars.length; i++) {
-        for (let j = i + 1; j < stars.length; j++) {
-          const dx = stars[i].x - stars[j].x
-          const dy = stars[i].y - stars[j].y
-          const d = dx * dx + dy * dy
-          if (d < 14400) {
-            ctx.beginPath()
-            ctx.moveTo(stars[i].x, stars[i].y)
-            ctx.lineTo(stars[j].x, stars[j].y)
-            ctx.strokeStyle = `hsla(265,50%,60%,${0.06 * (1 - Math.sqrt(d) / 120)})`
-            ctx.lineWidth = 0.4
-            ctx.stroke()
-          }
+      // Lightweight: only draw a few random constellation lines per frame
+      ctx.beginPath()
+      ctx.strokeStyle = 'hsla(265,50%,60%,0.035)'
+      ctx.lineWidth = 0.3
+      for (let i = 0; i < Math.min(8, stars.length - 1); i++) {
+        const a = stars[i], b = stars[i + 1]
+        const dx = a.x - b.x, dy = a.y - b.y
+        if (dx * dx + dy * dy < 18000) {
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
         }
       }
+      ctx.stroke()
       animId = requestAnimationFrame(frame)
     }
 
