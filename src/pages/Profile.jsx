@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, ChevronRight, Code2, Cpu, Flame, Globe, Mail, Rocket, Shield, Sparkles, Star, Target, Terminal, Trophy, User, Zap } from 'lucide-react'
+import { Activity, Code2, Cpu, Flame, Globe, Mail, Rocket, Shield, Sparkles, Star, Target, Terminal, Trophy, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { activityApi } from '../api/client.js'

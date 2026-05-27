@@ -1,4 +1,4 @@
-import { BookOpen, Brain, CheckCircle2, ChevronRight, Code2, Eye, Flame, Plus, Rocket, RotateCcw, Shield, Sparkles, Target, Terminal, Trophy, Zap } from 'lucide-react'
+import { BookOpen, Brain, CheckCircle2, Code2, Eye, Flame, Plus, RotateCcw, Shield, Sparkles, Target, Terminal, Zap } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { revisionApi } from '../api/client.js'
