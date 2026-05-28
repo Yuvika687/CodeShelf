@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react'
 
+/*
+  Mouse-Move Fluid Effect — NOT a trail.
+  Simulates soft fluid blobs that spawn, drift, and dissolve around the cursor.
+  Mouse velocity creates flowing, organic distortion. Parallax shifts bg elements.
+*/
+
 export default function CursorGlow() {
   const canvasRef = useRef(null)
 
@@ -11,17 +17,19 @@ export default function CursorGlow() {
 
     let w, h, dpr
     let mx = -200, my = -200
+    let pmx = -200, pmy = -200   // previous mouse for velocity
     let cx = -200, cy = -200
-    let vx = 0, vy = 0
     let visible = false
     let hovering = false
     let clicking = false
     let textMode = false
-    let trail = []
-    const TRAIL_LEN = 28
     let time = 0
 
-    // Parallax targets
+    // ─── Fluid blobs: spawn from mouse, float away, fade out ───
+    const blobs = []
+    const MAX_BLOBS = 60
+
+    // ─── Parallax ───
     let parallaxEls = []
     function collectParallaxTargets() {
       parallaxEls = Array.from(document.querySelectorAll(
@@ -46,10 +54,11 @@ export default function CursorGlow() {
     window.addEventListener('resize', resize)
 
     const onMove = (e) => {
+      pmx = mx; pmy = my
       mx = e.clientX; my = e.clientY
       if (!visible) visible = true
 
-      // Apply parallax to page elements
+      // Parallax
       const px = (mx / w - 0.5) * 2
       const py = (my / h - 0.5) * 2
       parallaxEls.forEach((el, i) => {
@@ -58,7 +67,33 @@ export default function CursorGlow() {
         const ty = py * depth * 5
         el.style.transform = `translate3d(${tx}px, ${ty}px, 0)`
       })
+
+      // Spawn fluid blobs based on velocity
+      const velX = mx - pmx
+      const velY = my - pmy
+      const speed = Math.sqrt(velX * velX + velY * velY)
+
+      if (speed > 1.5 && blobs.length < MAX_BLOBS) {
+        const count = Math.min(Math.ceil(speed * 0.2), 4)
+        for (let i = 0; i < count; i++) {
+          const angle = Math.atan2(velY, velX) + (Math.random() - 0.5) * 2.5
+          const force = speed * (0.3 + Math.random() * 0.5)
+          const hue = Math.random() > 0.5 ? 265 : 175 // purple or teal
+          blobs.push({
+            x: mx + (Math.random() - 0.5) * 10,
+            y: my + (Math.random() - 0.5) * 10,
+            vx: Math.cos(angle) * force * 0.15,
+            vy: Math.sin(angle) * force * 0.15,
+            r: 8 + Math.random() * 28,     // blob radius
+            life: 1,                         // fades from 1 → 0
+            decay: 0.008 + Math.random() * 0.012,
+            hue,
+            sat: 60 + Math.random() * 20,
+          })
+        }
+      }
     }
+
     const onLeave = () => {
       visible = false
       parallaxEls.forEach(el => { el.style.transform = '' })
@@ -83,85 +118,63 @@ export default function CursorGlow() {
       ctx.clearRect(0, 0, w, h)
       time += 0.016
 
-      // Velocity
-      const dx = mx - cx, dy = my - cy
-      vx = dx * 0.2
-      vy = dy * 0.2
-      cx += vx
-      cy += vy
-      const speed = Math.sqrt(vx * vx + vy * vy)
-
-      // Trail
-      trail.unshift({ x: mx, y: my, vx, vy })
-      if (trail.length > TRAIL_LEN) trail.length = TRAIL_LEN
+      // Smooth follow for ring
+      cx += (mx - cx) * 0.18
+      cy += (my - cy) * 0.18
 
       if (!visible) { animId = requestAnimationFrame(frame); return }
 
-      // ─── Fluid ribbon trail ───
-      if (trail.length > 3 && speed > 0.5) {
+      // ─── FLUID BLOBS — the main effect ───
+      ctx.globalCompositeOperation = 'lighter'
+      for (let i = blobs.length - 1; i >= 0; i--) {
+        const b = blobs[i]
+        b.x += b.vx
+        b.y += b.vy
+        b.vx *= 0.97  // friction
+        b.vy *= 0.97
+        b.life -= b.decay
+
+        if (b.life <= 0) {
+          blobs.splice(i, 1)
+          continue
+        }
+
+        const alpha = b.life * 0.08
+        const r = b.r * (0.6 + b.life * 0.4) // shrink as fading
+
+        const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r)
+        grad.addColorStop(0, `hsla(${b.hue}, ${b.sat}%, 60%, ${alpha * 1.5})`)
+        grad.addColorStop(0.4, `hsla(${b.hue}, ${b.sat}%, 50%, ${alpha * 0.6})`)
+        grad.addColorStop(1, `hsla(${b.hue}, ${b.sat}%, 40%, 0)`)
+        ctx.fillStyle = grad
         ctx.beginPath()
-        ctx.moveTo(trail[0].x, trail[0].y)
-        for (let i = 1; i < trail.length - 1; i++) {
-          const xc = (trail[i].x + trail[i + 1].x) / 2
-          const yc = (trail[i].y + trail[i + 1].y) / 2
-          ctx.quadraticCurveTo(trail[i].x, trail[i].y, xc, yc)
-        }
-        const ribbonWidth = Math.min(speed * 0.15, 3)
-        ctx.lineWidth = ribbonWidth
-        const grad = ctx.createLinearGradient(trail[0].x, trail[0].y, trail[trail.length - 1].x, trail[trail.length - 1].y)
-        grad.addColorStop(0, 'rgba(139,92,246,0.35)')
-        grad.addColorStop(0.5, 'rgba(98,213,200,0.15)')
-        grad.addColorStop(1, 'rgba(139,92,246,0)')
-        ctx.strokeStyle = grad
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        ctx.stroke()
+        ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
+        ctx.fill()
       }
+      ctx.globalCompositeOperation = 'source-over'
 
-      // ─── Fluid particles along trail ───
-      if (speed > 2) {
-        const count = Math.min(Math.floor(speed * 0.3), 5)
-        for (let i = 0; i < count; i++) {
-          const t = Math.random()
-          const idx = Math.floor(t * Math.min(trail.length - 1, 8))
-          const pt = trail[idx]
-          if (!pt) continue
-          const scatter = speed * 0.6
-          const px = pt.x + (Math.random() - 0.5) * scatter
-          const py = pt.y + (Math.random() - 0.5) * scatter
-          const alpha = (1 - t) * 0.4
-          const size = (1 - t) * 1.5 + 0.3
-          ctx.beginPath()
-          ctx.arc(px, py, size, 0, Math.PI * 2)
-          ctx.fillStyle = `rgba(139,92,246,${alpha})`
-          ctx.fill()
-        }
-      }
-
-      // ─── Ambient glow (subtle) ───
-      const glowR = hovering ? 120 : 90
-      const grad = ctx.createRadialGradient(mx, my, 0, mx, my, glowR)
-      grad.addColorStop(0, 'rgba(139,92,246,0.04)')
-      grad.addColorStop(0.4, 'rgba(98,213,200,0.015)')
-      grad.addColorStop(1, 'transparent')
-      ctx.fillStyle = grad
+      // ─── Ambient glow under cursor ───
+      const glowR = hovering ? 100 : 70
+      const ambGrad = ctx.createRadialGradient(mx, my, 0, mx, my, glowR)
+      ambGrad.addColorStop(0, 'rgba(139,92,246,0.04)')
+      ambGrad.addColorStop(0.4, 'rgba(98,213,200,0.012)')
+      ambGrad.addColorStop(1, 'transparent')
+      ctx.fillStyle = ambGrad
       ctx.fillRect(mx - glowR, my - glowR, glowR * 2, glowR * 2)
 
-      // ─── Outer ring (small & tight) ───
+      // ─── Cursor ring (small) ───
       const ringSize = clicking ? 6 : hovering ? 16 : 10
-      const ringAlpha = hovering ? 0.55 : 0.25
+      const ringAlpha = hovering ? 0.5 : 0.22
 
       if (!textMode) {
         ctx.beginPath()
         ctx.arc(cx, cy, ringSize, 0, Math.PI * 2)
-        const ringColor = hovering
+        ctx.strokeStyle = hovering
           ? `rgba(139,92,246,${ringAlpha})`
           : `rgba(255,255,255,${ringAlpha})`
-        ctx.strokeStyle = ringColor
         ctx.lineWidth = hovering ? 1.5 : 1
         ctx.stroke()
 
-        // Hover magnetic glow
         if (hovering) {
           ctx.beginPath()
           ctx.arc(cx, cy, ringSize + 3, 0, Math.PI * 2)
@@ -170,7 +183,6 @@ export default function CursorGlow() {
           ctx.stroke()
         }
 
-        // Click ripple
         if (clicking) {
           ctx.beginPath()
           ctx.arc(cx, cy, ringSize + 5, 0, Math.PI * 2)
@@ -178,19 +190,16 @@ export default function CursorGlow() {
           ctx.fill()
         }
       } else {
-        // Text cursor — thin beam
         ctx.fillStyle = 'rgba(255,255,255,0.8)'
         ctx.fillRect(cx - 0.6, cy - 10, 1.2, 20)
       }
 
-      // ─── Center dot (tiny & precise) ───
-      // Subtle halo
+      // ─── Center dot (tiny) ───
       ctx.beginPath()
       ctx.arc(mx, my, 4, 0, Math.PI * 2)
-      ctx.fillStyle = 'rgba(139,92,246,0.08)'
+      ctx.fillStyle = 'rgba(139,92,246,0.07)'
       ctx.fill()
 
-      // Core dot
       ctx.beginPath()
       ctx.arc(mx, my, 1.8, 0, Math.PI * 2)
       const dotGrad = ctx.createRadialGradient(mx, my, 0, mx, my, 1.8)
@@ -199,7 +208,6 @@ export default function CursorGlow() {
       ctx.fillStyle = dotGrad
       ctx.fill()
 
-      // Hot pixel center
       ctx.beginPath()
       ctx.arc(mx, my, 0.7, 0, Math.PI * 2)
       ctx.fillStyle = '#fff'

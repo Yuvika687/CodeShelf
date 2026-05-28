@@ -3,23 +3,13 @@ import { useEffect, useRef, useState } from 'react'
 import { revisionApi } from '../api/client.js'
 import NebulaParticles from '../components/NebulaParticles.jsx'
 
-const VOICE_PROFILES = [
-  { id: 'natural', label: 'Natural', rate: 0.92, pitch: 1.0, desc: 'Clear & balanced' },
-  { id: 'calm', label: 'Professor', rate: 0.82, pitch: 0.9, desc: 'Slow & authoritative' },
-  { id: 'energetic', label: 'Coach', rate: 1.05, pitch: 1.1, desc: 'Upbeat & motivating' },
-  { id: 'deep', label: 'Deep Focus', rate: 0.75, pitch: 0.7, desc: 'Slow deep thinker' },
-  { id: 'whisper', label: 'Whisper', rate: 0.85, pitch: 1.15, desc: 'Soft & quiet study' },
-  { id: 'fast', label: 'Speed Run', rate: 1.3, pitch: 1.0, desc: 'Rapid fire review' },
-]
-
 export default function WalkMode() {
   const [cards, setCards] = useState([])
   const [index, setIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [speaking, setSpeaking] = useState(false)
-  const [voiceProfile, setVoiceProfile] = useState(VOICE_PROFILES[0])
-  const [systemVoice, setSystemVoice] = useState(null)
-  const [availableVoices, setAvailableVoices] = useState([])
+  const [selectedVoice, setSelectedVoice] = useState(null)
+  const [voices, setVoices] = useState([])
   const [showVoicePanel, setShowVoicePanel] = useState(false)
   const [autoPlay, setAutoPlay] = useState(false)
   const card = cards[index]
@@ -29,18 +19,17 @@ export default function WalkMode() {
     revisionApi.walkMode().then((data) => setCards(data.cards || []))
   }, [])
 
-  // Load system voices
+  // Load ALL browser voices
   useEffect(() => {
     function loadVoices() {
-      const voices = window.speechSynthesis?.getVoices() || []
-      if (voices.length) {
-        setAvailableVoices(voices)
-        // Try to pick good default voices
-        const preferred = voices.find(v =>
-          /samantha|zira|david|google us|google uk|karen|moira|daniel|fiona|tessa/i.test(v.name)
-        )
-        if (preferred) setSystemVoice(preferred)
-      }
+      const all = window.speechSynthesis?.getVoices() || []
+      if (!all.length) return
+      setVoices(all)
+      // Auto-pick a good English default
+      const preferred = all.find(v =>
+        /google us english|google uk english|samantha|daniel|karen|microsoft david|microsoft zira|microsoft mark|moira|fiona|tessa|alex/i.test(v.name)
+      ) || all.find(v => v.lang?.startsWith('en'))
+      if (preferred && !selectedVoice) setSelectedVoice(preferred)
     }
     loadVoices()
     window.speechSynthesis?.addEventListener?.('voiceschanged', loadVoices)
@@ -51,10 +40,9 @@ export default function WalkMode() {
     window.speechSynthesis?.cancel()
     if (!text) return
     const u = new SpeechSynthesisUtterance(text)
-    u.rate = voiceProfile.rate
-    u.pitch = voiceProfile.pitch
-    u.volume = voiceProfile.id === 'whisper' ? 0.5 : 0.9
-    if (systemVoice) u.voice = systemVoice
+    u.rate = 0.92
+    u.pitch = 1.0
+    if (selectedVoice) u.voice = selectedVoice
     u.onstart = () => setSpeaking(true)
     u.onend = () => { setSpeaking(false); onEnd?.() }
     u.onerror = () => setSpeaking(false)
@@ -69,31 +57,30 @@ export default function WalkMode() {
 
   function speakQuestion() {
     if (!card) return
-    const intro = voiceProfile.id === 'calm'
-      ? `Question number ${index + 1}. ${card.question}`
-      : voiceProfile.id === 'coach'
-        ? `Alright! Question ${index + 1}! ${card.question}`
-        : `Question ${index + 1}. ${card.question}`
-    speak(intro)
+    speak(`Question ${index + 1}. ${card.question}`)
   }
 
   function speakAnswer() {
     if (!card) return
-    const intro = voiceProfile.id === 'calm'
-      ? `The answer is: ${card.answer}`
-      : voiceProfile.id === 'coach'
-        ? `Here's the answer! ${card.answer}`
-        : card.answer
-    speak(intro)
+    speak(card.answer)
   }
 
   function speakFull() {
     if (!card) return
     speak(`Question ${index + 1}. ${card.question}`, () => {
-      setTimeout(() => {
-        speak(`Answer: ${card.answer}`)
-      }, 600)
+      setTimeout(() => speak(`Answer: ${card.answer}`), 600)
     })
+  }
+
+  function previewVoice(voice) {
+    setSelectedVoice(voice)
+    window.speechSynthesis?.cancel()
+    const u = new SpeechSynthesisUtterance(`Hi, I am ${voice.name.split(' ').slice(0, 3).join(' ')}`)
+    u.voice = voice
+    u.rate = 0.92
+    u.onstart = () => setSpeaking(true)
+    u.onend = () => setSpeaking(false)
+    window.speechSynthesis?.speak(u)
   }
 
   async function rate(rating) {
@@ -103,9 +90,7 @@ export default function WalkMode() {
     const nextIdx = Math.min(index + 1, cards.length - 1)
     setIndex(nextIdx)
     if (autoPlay && cards[nextIdx]) {
-      setTimeout(() => {
-        speak(`Question ${nextIdx + 1}. ${cards[nextIdx].question}`)
-      }, 500)
+      setTimeout(() => speak(`Question ${nextIdx + 1}. ${cards[nextIdx].question}`), 500)
     }
   }
 
@@ -120,13 +105,35 @@ export default function WalkMode() {
     return { h: Math.max(0.12, 1 - d * d), delay: i * 0.032 }
   })
 
-  // Group English-like voices
-  const groupedVoices = availableVoices.reduce((acc, v) => {
-    const lang = v.lang?.split('-')[0] || 'other'
-    if (!acc[lang]) acc[lang] = []
-    acc[lang].push(v)
-    return acc
-  }, {})
+  // Group voices by language
+  const grouped = {}
+  voices.forEach(v => {
+    const lang = v.lang || 'unknown'
+    const key = lang.startsWith('en') ? 'English' : lang.split('-')[0].toUpperCase()
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(v)
+  })
+  // English first, then others sorted
+  const langOrder = ['English', ...Object.keys(grouped).filter(k => k !== 'English').sort()]
+
+  // Get short display name
+  function shortName(voice) {
+    return voice.name
+      .replace(/Microsoft /gi, '')
+      .replace(/Google /gi, '')
+      .replace(/Apple /gi, '')
+      .replace(/ \(Natural\)/gi, '')
+      .trim()
+  }
+
+  // Get voice emoji based on characteristics
+  function voiceEmoji(voice) {
+    const n = voice.name.toLowerCase()
+    if (/female|zira|samantha|karen|fiona|moira|tessa|hazel|susan|jenny|aria|sara/i.test(n)) return '👩'
+    if (/male|david|daniel|mark|james|alex|guy|ryan|christopher|roger/i.test(n)) return '👨'
+    if (/google/i.test(n)) return '🤖'
+    return '🗣️'
+  }
 
   return (
     <div className="wk">
@@ -140,18 +147,15 @@ export default function WalkMode() {
 
       <div className="wk-mid">
         <div className="wk-visualizer">
-          {/* Left wave bars */}
           <div className="wk-wave-half wk-wave-left">
             {bars.slice(0, 24).map((b, i) => <span key={i} className={`wk-bar ${speaking ? 'active' : ''}`} style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
           </div>
-          {/* Center orb */}
           <div className={`wk-orb ${speaking ? 'is-speaking' : ''}`}>
             <Headphones size={36} />
             <i className="wk-ring r1" />
             <i className="wk-ring r2" />
             <i className="wk-ring r3" />
           </div>
-          {/* Right wave bars */}
           <div className="wk-wave-half wk-wave-right">
             {bars.slice(24).map((b, i) => <span key={i} className={`wk-bar ${speaking ? 'active' : ''}`} style={{ '--h': b.h, '--d': `${b.delay}s` }} />)}
           </div>
@@ -162,55 +166,54 @@ export default function WalkMode() {
       <div className="wk-voice-strip">
         <button className="wk-voice-toggle" onClick={() => setShowVoicePanel(!showVoicePanel)}>
           <Settings2 size={14} />
-          <span>{voiceProfile.label}</span>
+          <span>{selectedVoice ? `${voiceEmoji(selectedVoice)} ${shortName(selectedVoice)}` : 'Pick Voice'}</span>
           <ChevronDown size={12} style={{ transform: showVoicePanel ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
         </button>
         <button className={`wk-auto-btn ${autoPlay ? 'active' : ''}`} onClick={() => setAutoPlay(!autoPlay)}>
           {autoPlay ? <Pause size={12} /> : <Play size={12} />}
           <span>Auto</span>
         </button>
-        {systemVoice && (
-          <span className="wk-voice-name">
-            🗣️ {systemVoice.name.split(' ').slice(0, 2).join(' ')}
-          </span>
+        {selectedVoice && (
+          <span className="wk-voice-name">{selectedVoice.lang}</span>
         )}
       </div>
 
-      {/* Voice Panel */}
+      {/* Voice Picker Panel — actual different voices */}
       {showVoicePanel && (
         <div className="wk-voice-panel">
-          <div className="wk-voice-section">
-            <small>Voice Style</small>
-            <div className="wk-voice-grid">
-              {VOICE_PROFILES.map(vp => (
-                <button
-                  key={vp.id}
-                  className={`wk-voice-card ${voiceProfile.id === vp.id ? 'active' : ''}`}
-                  onClick={() => { setVoiceProfile(vp); speak('Testing ' + vp.label + ' voice') }}
-                >
-                  <strong>{vp.label}</strong>
-                  <span>{vp.desc}</span>
-                </button>
-              ))}
-            </div>
+          <div className="wk-voice-panel-head">
+            <strong>Choose a Voice</strong>
+            <span>{voices.length} voices available</span>
           </div>
-          {availableVoices.length > 0 && (
-            <div className="wk-voice-section">
-              <small>System Voice</small>
-              <select
-                className="input wk-voice-select"
-                value={systemVoice?.name || ''}
-                onChange={e => {
-                  const v = availableVoices.find(av => av.name === e.target.value)
-                  if (v) { setSystemVoice(v); speak('Hello, I am ' + v.name.split(' ').slice(0, 2).join(' ')) }
-                }}
-              >
-                {(groupedVoices['en'] || availableVoices).map(v => (
-                  <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="wk-voice-scroll">
+            {langOrder.map(lang => {
+              const langVoices = grouped[lang]
+              if (!langVoices?.length) return null
+              return (
+                <div key={lang} className="wk-voice-lang-group">
+                  <small className="wk-voice-lang-label">{lang} ({langVoices.length})</small>
+                  <div className="wk-voice-grid">
+                    {langVoices.map(v => (
+                      <button
+                        key={v.name}
+                        className={`wk-voice-card ${selectedVoice?.name === v.name ? 'active' : ''}`}
+                        onClick={() => previewVoice(v)}
+                      >
+                        <span className="wk-vc-emoji">{voiceEmoji(v)}</span>
+                        <div className="wk-vc-info">
+                          <strong>{shortName(v)}</strong>
+                          <span>{v.lang}{v.localService ? '' : ' • Online'}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {!voices.length && (
+              <p className="wk-no-voices">Loading voices... Your browser is preparing text-to-speech engines.</p>
+            )}
+          </div>
         </div>
       )}
 
