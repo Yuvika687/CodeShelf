@@ -1,4 +1,4 @@
-import { ChevronDown, Eye, Headphones, Mic, Pause, Play, Repeat2, Settings2, SkipForward, Volume2 } from 'lucide-react'
+import { ChevronDown, Eye, Headphones, Mic, Pause, Play, Repeat2, Settings2, SkipForward, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { revisionApi } from '../api/client.js'
 import NebulaParticles from '../components/NebulaParticles.jsx'
@@ -25,7 +25,6 @@ export default function WalkMode() {
       const all = window.speechSynthesis?.getVoices() || []
       if (!all.length) return
       setVoices(all)
-      // Auto-pick a good English default
       const preferred = all.find(v =>
         /google us english|google uk english|samantha|daniel|karen|microsoft david|microsoft zira|microsoft mark|moira|fiona|tessa|alex/i.test(v.name)
       ) || all.find(v => v.lang?.startsWith('en'))
@@ -105,7 +104,7 @@ export default function WalkMode() {
     return { h: Math.max(0.12, 1 - d * d), delay: i * 0.032 }
   })
 
-  // Group voices by language
+  // Group voices by language — English first
   const grouped = {}
   voices.forEach(v => {
     const lang = v.lang || 'unknown'
@@ -113,20 +112,18 @@ export default function WalkMode() {
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(v)
   })
-  // English first, then others sorted
   const langOrder = ['English', ...Object.keys(grouped).filter(k => k !== 'English').sort()]
 
-  // Get short display name
   function shortName(voice) {
     return voice.name
       .replace(/Microsoft /gi, '')
       .replace(/Google /gi, '')
       .replace(/Apple /gi, '')
       .replace(/ \(Natural\)/gi, '')
+      .replace(/ Online$/gi, '')
       .trim()
   }
 
-  // Get voice emoji based on characteristics
   function voiceEmoji(voice) {
     const n = voice.name.toLowerCase()
     if (/female|zira|samantha|karen|fiona|moira|tessa|hazel|susan|jenny|aria|sara/i.test(n)) return '👩'
@@ -178,41 +175,46 @@ export default function WalkMode() {
         )}
       </div>
 
-      {/* Voice Picker Panel — actual different voices */}
+      {/* FLOATING Voice Picker — positioned absolute so overflow:hidden doesn't clip */}
       {showVoicePanel && (
-        <div className="wk-voice-panel">
-          <div className="wk-voice-panel-head">
-            <strong>Choose a Voice</strong>
-            <span>{voices.length} voices available</span>
-          </div>
-          <div className="wk-voice-scroll">
-            {langOrder.map(lang => {
-              const langVoices = grouped[lang]
-              if (!langVoices?.length) return null
-              return (
-                <div key={lang} className="wk-voice-lang-group">
-                  <small className="wk-voice-lang-label">{lang} ({langVoices.length})</small>
-                  <div className="wk-voice-grid">
-                    {langVoices.map(v => (
-                      <button
-                        key={v.name}
-                        className={`wk-voice-card ${selectedVoice?.name === v.name ? 'active' : ''}`}
-                        onClick={() => previewVoice(v)}
-                      >
-                        <span className="wk-vc-emoji">{voiceEmoji(v)}</span>
-                        <div className="wk-vc-info">
-                          <strong>{shortName(v)}</strong>
-                          <span>{v.lang}{v.localService ? '' : ' • Online'}</span>
-                        </div>
-                      </button>
-                    ))}
+        <div className="wk-voice-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowVoicePanel(false) }}>
+          <div className="wk-voice-panel">
+            <div className="wk-voice-panel-head">
+              <strong>Choose a Voice</strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>{voices.length} voices</span>
+                <button className="wk-voice-close" onClick={() => setShowVoicePanel(false)}><X size={16} /></button>
+              </div>
+            </div>
+            <div className="wk-voice-scroll">
+              {langOrder.map(lang => {
+                const langVoices = grouped[lang]
+                if (!langVoices?.length) return null
+                return (
+                  <div key={lang} className="wk-voice-lang-group">
+                    <small className="wk-voice-lang-label">{lang} ({langVoices.length})</small>
+                    <div className="wk-voice-grid">
+                      {langVoices.map(v => (
+                        <button
+                          key={v.name}
+                          className={`wk-voice-card ${selectedVoice?.name === v.name ? 'active' : ''}`}
+                          onClick={() => previewVoice(v)}
+                        >
+                          <span className="wk-vc-emoji">{voiceEmoji(v)}</span>
+                          <div className="wk-vc-info">
+                            <strong>{shortName(v)}</strong>
+                            <span>{v.lang}{v.localService ? '' : ' • Online'}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-            {!voices.length && (
-              <p className="wk-no-voices">Loading voices... Your browser is preparing text-to-speech engines.</p>
-            )}
+                )
+              })}
+              {!voices.length && (
+                <p className="wk-no-voices">Loading voices... Your browser is preparing text-to-speech engines.</p>
+              )}
+            </div>
           </div>
         </div>
       )}
