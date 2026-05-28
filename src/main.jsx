@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { installGlobalDebugHandlers } from './debug.js'
 import './index.css'
+import './pages/enhanced-polish.css'
 
 installGlobalDebugHandlers()
 
