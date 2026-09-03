@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from urllib.parse import urlparse
 
 from fastapi import FastAPI
@@ -30,16 +31,23 @@ app.add_middleware(
 )
 
 
+_VERCEL_ORIGIN_RE = re.compile(r"^code-shelf(-[a-z0-9]+)?(-yuvika-malhotras-projects)?\.vercel\.app$")
+
+
 def allowed_browser_origin(origin: str | None) -> bool:
     if not origin:
         return False
     parsed = urlparse(origin)
     host = (parsed.hostname or "").lower()
     if parsed.scheme == "chrome-extension":
+        # The unpacked/dev CodeShelf Capture extension has no fixed ID, so this
+        # can't be scoped to one origin. The GitHub OAuth `state` and extension
+        # pairing flow no longer put long-lived tokens where any extension could
+        # read them, which is what made this wildcard risky.
         return True
     if parsed.scheme == "https" and (host == "yogender1.me" or host.endswith(".yogender1.me")):
         return True
-    if parsed.scheme == "https" and host.endswith(".onrender.com"):
+    if parsed.scheme == "https" and _VERCEL_ORIGIN_RE.match(host):
         return True
     if parsed.scheme == "http" and host in {"localhost", "127.0.0.1"}:
         return True

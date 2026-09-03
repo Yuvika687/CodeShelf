@@ -16,6 +16,9 @@ Endpoints:
 
 from __future__ import annotations
 
+import secrets
+import time
+
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -44,6 +47,32 @@ from app.models import GitHubConnection, Problem, User
 
 router = APIRouter(prefix="/api/github", tags=["github"])
 settings = get_settings()
+
+# In-memory OAuth state store: random nonce -> (user_id, expires_at).
+# Avoids ever putting the user's real session JWT into the `state` param,
+# where it would be echoed back in redirect URLs, logs, and Referer headers.
+_OAUTH_STATE_TTL_SECONDS = 600
+_oauth_states: dict[str, tuple[str, float]] = {}
+
+
+def _create_oauth_state(user_id: str) -> str:
+    now = time.time()
+    for key, (_, expires_at) in list(_oauth_states.items()):
+        if expires_at < now:
+            _oauth_states.pop(key, None)
+    nonce = secrets.token_urlsafe(24)
+    _oauth_states[nonce] = (user_id, now + _OAUTH_STATE_TTL_SECONDS)
+    return nonce
+
+
+def _consume_oauth_state(nonce: str) -> str | None:
+    entry = _oauth_states.pop(nonce, None)
+    if not entry:
+        return None
+    user_id, expires_at = entry
+    if expires_at < time.time():
+        return None
+    return user_id
 
 
 # ── Pydantic schemas ──────────────────────────────────────────────────
@@ -101,12 +130,21 @@ async def github_connect(
     """
     if not settings.github_client_id or not settings.github_client_secret:
         return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=oauth_missing")
-    # We encode the JWT in the state parameter so the callback can identify the user
+
+    from app.jwt_utils import decode_token
+    user_id = decode_token(token)
+    if not user_id:
+        return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=invalid_session")
+
+    # Use a short-lived random nonce as the OAuth `state`, never the real JWT —
+    # GitHub echoes `state` back in the callback redirect, where it would land
+    # in server logs, browser history, and the Referer header if it were the token.
+    state = _create_oauth_state(user_id)
     authorize_url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={settings.github_client_id}"
         f"&scope=repo"
-        f"&state={token}"
+        f"&state={state}"
         f"&redirect_uri={settings.backend_url.rstrip('/')}/api/github/callback"
     )
     return RedirectResponse(url=authorize_url)
@@ -128,9 +166,8 @@ async def github_callback(
         return RedirectResponse(url=f"{settings.frontend_url.rstrip('/')}/problems?github=missing_state")
     _require_oauth_config()
 
-    # 1. Identify the user from the state (JWT)
-    from app.jwt_utils import decode_token
-    user_id = decode_token(state)
+    # 1. Identify the user from the state nonce (single-use, 10-minute TTL)
+    user_id = _consume_oauth_state(state)
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid or expired session. Please try connecting GitHub again.")
 

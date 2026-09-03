@@ -116,6 +116,10 @@ export const problemsApi = {
   remove: (id) => api(`/problems/${id}`, { method: 'DELETE' }),
 }
 
+export const extensionApi = {
+  pairInit: () => api('/extension/pair-init', { method: 'POST' }),
+}
+
 export const githubApi = {
   status: () => api('/github/status'),
   repos: () => api('/github/repos'),

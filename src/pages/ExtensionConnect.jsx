@@ -1,6 +1,6 @@
 import { CheckCircle2, PlugZap, Shield, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getToken } from '../api/client.js'
+import { extensionApi, getToken } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const apiBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://code-shelf-org.onrender.com/api'
@@ -22,7 +22,7 @@ export default function ExtensionConnect() {
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
-  function connect() {
+  async function connect() {
     const token = getToken()
     if (!token) {
       setStatus('Please log in to CodeShelf first, then try again.')
@@ -32,12 +32,20 @@ export default function ExtensionConnect() {
     window.setTimeout(() => {
       setStatus((current) => current === 'Connecting extension...' ? 'Extension not detected. Open this page from the CodeShelf Capture extension, or reload the unpacked extension in your browser.' : current)
     }, 1600)
-    window.postMessage({
-      type: 'CODESHELF_CONNECT_EXTENSION',
-      token,
-      apiBase,
-      user: { name: user?.name || '', email: user?.email || '' },
-    }, '*')
+    try {
+      // Hand the extension a short-lived, single-use pairing code instead of
+      // the real session token — postMessage is visible to any extension's
+      // content script on this page, so the long-lived JWT never touches it.
+      const { code } = await extensionApi.pairInit()
+      window.postMessage({
+        type: 'CODESHELF_CONNECT_EXTENSION',
+        code,
+        apiBase,
+        user: { name: user?.name || '', email: user?.email || '' },
+      }, window.location.origin)
+    } catch (error) {
+      setStatus(error.message || 'Could not start extension pairing. Please try again.')
+    }
   }
 
   return (
