@@ -17,11 +17,15 @@ Safe to run multiple times — every step is a no-op once the schema matches.
 from __future__ import annotations
 
 import asyncio
+import sys
+from pathlib import Path
 
-from sqlalchemy import text
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database import engine
-from app.models.base import Base
+from sqlalchemy import text  # noqa: E402
+
+from app.database import engine  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
 # (table, column, DDL type + default clause)
 COLUMNS_TO_ENSURE = [
