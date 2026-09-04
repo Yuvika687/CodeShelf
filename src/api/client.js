@@ -93,7 +93,8 @@ const q = (params = {}) => {
 }
 
 export const authApi = {
-  google: (idToken) => api('/auth/google', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: idToken }),
+  signup: (payload) => api('/auth/signup', { method: 'POST', body: payload }),
+  login: (payload) => api('/auth/login', { method: 'POST', body: payload }),
   me: () => api('/auth/me'),
 }
 

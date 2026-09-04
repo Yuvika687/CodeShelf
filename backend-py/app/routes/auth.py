@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import html
-import json
 from urllib.parse import urlencode
 
 import httpx
-import firebase_admin
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
-from firebase_admin import auth as firebase_auth, credentials
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +15,7 @@ from app.deps import get_current_user
 from app.jwt_utils import create_access_token
 from app.models import EmailLog, User
 from app.routes.utils import ensure_email_preferences, user_out
+from app.security import hash_password, verify_password
 
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -100,59 +99,59 @@ async def send_welcome_email_after_response(user_id: str) -> None:
         print(f"CodeShelf welcome email failed for user {user_id}: {exc}")
 
 
-def init_firebase_admin() -> None:
-    if firebase_admin._apps:
-        return
-    if settings.firebase_service_account_json:
-        firebase_admin.initialize_app(credentials.Certificate(json.loads(settings.firebase_service_account_json)))
-        return
-    options = {"projectId": settings.firebase_project_id} if settings.firebase_project_id else None
-    firebase_admin.initialize_app(options=options)
+def normalize_email(value: str) -> str:
+    return value.strip().lower()
 
 
-@router.post("/google")
-async def google_login(request: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
-    content_type = request.headers.get("content-type", "")
-    if content_type.startswith("text/plain"):
-        id_token = (await request.body()).decode("utf-8").strip()
-    else:
-        body = await request.json()
-        id_token = str(body.get("id_token") or "").strip()
-    if not id_token:
-        raise HTTPException(status_code=400, detail="Missing Google ID token.")
-    try:
-        init_firebase_admin()
-        decoded = firebase_auth.verify_id_token(id_token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Google sign-in could not be verified.")
-    email = str(decoded.get("email") or "").lower()
-    if not email:
-        raise HTTPException(status_code=400, detail="Google account did not provide an email.")
-    if not decoded.get("email_verified", False):
-        raise HTTPException(status_code=403, detail="Google email is not verified.")
-    firebase_uid = str(decoded.get("uid") or "")
+class SignupBody(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/signup")
+async def signup(body: SignupBody, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+    name = body.name.strip()
+    email = normalize_email(body.email)
+    password = body.password
+
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required.")
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        raise HTTPException(status_code=400, detail="Enter a valid email address.")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+
+    existing = await db.execute(select(User).where(User.email == email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="An account with this email already exists.")
+
+    user = User(
+        name=name,
+        email=email,
+        password_hash=hash_password(password),
+        email_verified=False,
+        auth_provider="password",
+    )
+    db.add(user)
+    await db.flush()
+    await ensure_email_preferences(db, user)
+    background_tasks.add_task(send_welcome_email_after_response, user.id)
+    return {"token": create_access_token(user.id), "user": user_out(user)}
+
+
+@router.post("/login")
+async def login(body: LoginBody, db: AsyncSession = Depends(get_db)):
+    email = normalize_email(body.email)
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
-    is_new = False
-    if not user:
-        user = User(
-            name=str(decoded.get("name") or email.split("@")[0]),
-            email=email,
-            password_hash="firebase-google",
-            email_verified=True,
-            auth_provider="google",
-            firebase_uid=firebase_uid,
-        )
-        db.add(user)
-        await db.flush()
-        await ensure_email_preferences(db, user)
-        is_new = True
-    else:
-        user.email_verified = True
-        user.auth_provider = "google"
-        user.firebase_uid = user.firebase_uid or firebase_uid
-    if is_new:
-        background_tasks.add_task(send_welcome_email_after_response, user.id)
+    if not user or user.auth_provider != "password" or not verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
     return {"token": create_access_token(user.id), "user": user_out(user)}
 
 

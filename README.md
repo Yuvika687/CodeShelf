@@ -73,7 +73,7 @@ CodeShelf is a **spaced-repetition revision platform** built for developers who 
 | **Frontend** | React 19, Vite 8, React Router 7, CodeMirror 6, Lucide Icons |
 | **Backend** | FastAPI, SQLAlchemy (async), Alembic migrations |
 | **Database** | Neon PostgreSQL (serverless) — falls back to SQLite locally |
-| **Auth** | Firebase Google Sign-In → JWT tokens |
+| **Auth** | Email/password (bcrypt) → JWT tokens |
 | **Email** | Resend API with HTML templates — console fallback for dev |
 | **AI** | HuggingFace Inference (BART), Gemini API (flash), LLM JSON import |
 | **GitHub** | OAuth → repo selection → automated solution commits |
@@ -148,7 +148,7 @@ codeshelf/
 ├── src/                    # React frontend
 │   ├── pages/              # Route pages (Home, WalkMode, Problems, etc.)
 │   ├── components/         # Layout, NebulaParticles, CursorGlow
-│   ├── context/            # AuthContext (Firebase + JWT)
+│   ├── context/            # AuthContext (email/password + JWT)
 │   ├── api/                # API client with token management
 │   └── index.css           # Complete design system
 ├── backend-py/             # FastAPI backend

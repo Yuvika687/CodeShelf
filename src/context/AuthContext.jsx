@@ -1,8 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { signInWithPopup } from 'firebase/auth'
 import { authApi, getToken, setToken } from '../api/client.js'
-import { debugError, debugLog, redact } from '../debug.js'
-import { firebaseAuth, googleProvider } from '../firebase.js'
+import { debugError, debugLog } from '../debug.js'
 
 const AuthContext = createContext(null)
 
@@ -35,33 +33,29 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     loading,
-    async loginWithGoogle() {
-      debugLog('google login: start', {
-        hasFirebaseAuth: Boolean(firebaseAuth),
-        hasGoogleProvider: Boolean(googleProvider),
-        currentOrigin: window.location.origin,
-      })
-      if (!firebaseAuth || !googleProvider) throw new Error('Google sign-in is not configured for this deployment.')
+    async login(email, password) {
+      debugLog('login: start', { email })
       try {
-        const result = await signInWithPopup(firebaseAuth, googleProvider)
-        debugLog('google login: popup success', {
-          uid: result.user.uid,
-          email: result.user.email,
-          emailVerified: result.user.emailVerified,
-          providerData: result.user.providerData?.map((provider) => provider.providerId),
-        })
-        const idToken = await result.user.getIdToken()
-        debugLog('google login: firebase id token acquired', {
-          tokenPreview: redact(idToken),
-          length: idToken.length,
-        })
-        const data = await authApi.google(idToken)
-        debugLog('google login: backend success', { user: data.user, hasJwt: Boolean(data.token) })
+        const data = await authApi.login({ email, password })
+        debugLog('login: success', { user: data.user })
         setToken(data.token)
         setUser(data.user)
         return data.user
       } catch (error) {
-        debugError('google login: failed', error)
+        debugError('login: failed', error)
+        throw error
+      }
+    },
+    async signup(name, email, password) {
+      debugLog('signup: start', { name, email })
+      try {
+        const data = await authApi.signup({ name, email, password })
+        debugLog('signup: success', { user: data.user })
+        setToken(data.token)
+        setUser(data.user)
+        return data.user
+      } catch (error) {
+        debugError('signup: failed', error)
         throw error
       }
     },
