@@ -1,0 +1,16 @@
+name: Cron - Weekly Digest Email
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron-weekly endpoint
+        run: |
+          curl -sf -X POST "https://codeshelf-vwb9.onrender.com/api/email/cron-weekly" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 60
