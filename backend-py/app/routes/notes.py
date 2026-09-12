@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.ai_service import generate_revision_cards
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import Note, RevisionCard, User
+from app.models import Note, RevisionCard, Tag, User
 from app.routes.utils import fallback_cards_from_note, note_out, resolve_tags
 
 
@@ -36,6 +36,7 @@ class NoteIn(BaseModel):
 @router.get("")
 async def list_notes(
     search: str = "",
+    tag: str = "",
     topic: str = "",
     note_type: str = "",
     difficulty: str = "",
@@ -45,7 +46,16 @@ async def list_notes(
     query = select(Note).options(selectinload(Note.tags)).where(Note.user_id == user.id)
     if search:
         pattern = f"%{search}%"
-        query = query.where(or_(Note.title.ilike(pattern), Note.content.ilike(pattern), Note.topic.ilike(pattern)))
+        query = query.where(
+            or_(
+                Note.title.ilike(pattern),
+                Note.content.ilike(pattern),
+                Note.topic.ilike(pattern),
+                Note.code_snippet.ilike(pattern),
+            )
+        )
+    if tag:
+        query = query.where(Note.tags.any(Tag.name.ilike(tag)))
     if topic:
         query = query.where(Note.topic == topic)
     if note_type:
