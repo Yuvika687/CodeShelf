@@ -158,10 +158,31 @@ codeshelf/
 │   │   ├── models/         # SQLAlchemy models
 │   │   └── services/       # AI, email, GitHub services
 │   └── alembic/            # Database migrations
+├── mobile/                 # Expo (React Native) mobile app
 ├── extensions/             # Chrome & VS Code extensions
+├── .github/workflows/      # Scheduled email jobs (GitHub Actions cron)
 ├── public/                 # Static assets & favicon
 └── index.html              # Entry point
 ```
+
+---
+
+## 📱 Mobile App & Tag Search
+
+The `mobile/` folder is an Expo app that talks to the same FastAPI backend:
+
+- **Login** — email/password, JWT kept in secure storage
+- **Notes list** — search bar plus Arrays / DP / SQL tag chips
+- **Note detail** — full note with a **Summarize** button (Hugging Face summary API)
+
+```bash
+cd mobile
+npm install
+npm start        # scan the QR code with Expo Go
+```
+
+Notes support tag filtering on the API: `GET /api/notes?search=binary&tag=Arrays`
+(case-insensitive, and the two filters can be combined).
 
 ---
 
@@ -194,9 +215,15 @@ VITE_API_BASE_URL=https://your-api.onrender.com/api
 - Set `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`
 - Build command runs Alembic migrations automatically
 
-### Daily Emails → Render Cron
+### Scheduled Emails → GitHub Actions (free)
 
-Schedule `/api/email/send-daily` via Render Cron Job for daily reminders.
+Workflows in `.github/workflows/` call the authenticated cron endpoints on a schedule
+(daily reminder every 30 min, weekly digest, streak alert, monthly log cleanup), so no
+paid Render Cron Job is needed.
+
+- Add a repository secret named `CRON_SECRET`
+- Set the same value as `CRON_SECRET` on the backend service
+- Each workflow can also be run manually from the **Actions** tab
 
 ---
 
