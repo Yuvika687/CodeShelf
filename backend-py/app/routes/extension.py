@@ -11,12 +11,13 @@ POST /api/extension/submit
 
 from __future__ import annotations
 
+import hashlib
 import secrets
-import time
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -30,37 +31,54 @@ from app.github_utils import (
     render_solution_readme,
 )
 from app.jwt_utils import create_access_token
-from app.models import GitHubConnection, Problem, User
+from app.models import ExtensionPairingCode, GitHubConnection, Problem, User
 from app.routes.utils import fallback_cards_from_problem, problem_out
 
 
 router = APIRouter(prefix="/api/extension", tags=["extension"])
 
-# In-memory, single-use pairing codes: code -> (user_id, expires_at).
-# The frontend hands one of these to the extension over window.postMessage
-# instead of the real session JWT, since any content script sharing the page
-# can observe postMessage traffic. A code is only good for one exchange call
-# within a short window, unlike a 14-day bearer token.
+# Single-use pairing codes, persisted so they survive restarts and work across
+# workers. The frontend hands one of these to the extension over
+# window.postMessage instead of the real session JWT, since any content script
+# sharing the page can observe postMessage traffic. A code is only good for one
+# exchange call within a short window, unlike a 14-day bearer token.
 _PAIRING_TTL_SECONDS = 300
-_pairing_codes: dict[str, tuple[str, float]] = {}
 
 
-def _create_pairing_code(user_id: str) -> str:
-    now = time.time()
-    for key, (_, expires_at) in list(_pairing_codes.items()):
-        if expires_at < now:
-            _pairing_codes.pop(key, None)
+def _hash_code(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+async def _create_pairing_code(db: AsyncSession, user_id: str) -> str:
+    now = datetime.now(timezone.utc)
+    await db.execute(delete(ExtensionPairingCode).where(ExtensionPairingCode.expires_at < now))
     code = secrets.token_urlsafe(24)
-    _pairing_codes[code] = (user_id, now + _PAIRING_TTL_SECONDS)
+    db.add(
+        ExtensionPairingCode(
+            code_hash=_hash_code(code),
+            user_id=user_id,
+            expires_at=now + timedelta(seconds=_PAIRING_TTL_SECONDS),
+        )
+    )
+    await db.flush()
     return code
 
 
-def _consume_pairing_code(code: str) -> str | None:
-    entry = _pairing_codes.pop(code, None)
-    if not entry:
+async def _consume_pairing_code(db: AsyncSession, code: str) -> str | None:
+    # DELETE ... RETURNING makes the exchange atomic: two concurrent calls with
+    # the same code can't both succeed.
+    result = await db.execute(
+        delete(ExtensionPairingCode)
+        .where(ExtensionPairingCode.code_hash == _hash_code(code))
+        .returning(ExtensionPairingCode.user_id, ExtensionPairingCode.expires_at)
+    )
+    row = result.first()
+    if not row:
         return None
-    user_id, expires_at = entry
-    if expires_at < time.time():
+    user_id, expires_at = row
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         return None
     return user_id
 
@@ -90,9 +108,9 @@ class GitHubResult(BaseModel):
 # ── Extension Pairing ─────────────────────────────────────────────────
 
 @router.post("/pair-init")
-async def extension_pair_init(user: User = Depends(get_current_user)):
+async def extension_pair_init(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Issue a short-lived, single-use code the extension can exchange for a session token."""
-    code = _create_pairing_code(user.id)
+    code = await _create_pairing_code(db, user.id)
     return {"code": code, "expires_in": _PAIRING_TTL_SECONDS}
 
 
@@ -102,7 +120,7 @@ async def extension_pair_exchange(
     db: AsyncSession = Depends(get_db),
 ):
     """Exchange a pairing code (from pair-init) for a real session token."""
-    user_id = _consume_pairing_code(code)
+    user_id = await _consume_pairing_code(db, code)
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid or expired pairing code.")
     result = await db.execute(select(User).where(User.id == user_id))

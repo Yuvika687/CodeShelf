@@ -5,12 +5,13 @@ on:
     - cron: "0 4 1 * *"
   workflow_dispatch: {}
 
+concurrency:
+  group: cron-cleanup
+  cancel-in-progress: false
+
 jobs:
-  trigger:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call cron-cleanup endpoint
-        run: |
-          curl -sf -X POST "https://codeshelf-vwb9.onrender.com/api/email/cron-cleanup" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            --max-time 60
+  call:
+    uses: ./.github/workflows/_cron-call.yml
+    with:
+      endpoint: cron-cleanup
+    secrets: inherit

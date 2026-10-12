@@ -5,12 +5,13 @@ on:
     - cron: "0 3 * * 0"
   workflow_dispatch: {}
 
+concurrency:
+  group: cron-weekly
+  cancel-in-progress: false
+
 jobs:
-  trigger:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call cron-weekly endpoint
-        run: |
-          curl -sf -X POST "https://codeshelf-vwb9.onrender.com/api/email/cron-weekly" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            --max-time 60
+  call:
+    uses: ./.github/workflows/_cron-call.yml
+    with:
+      endpoint: cron-weekly
+    secrets: inherit

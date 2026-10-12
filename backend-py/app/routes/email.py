@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import html
 import json
 import random
@@ -111,7 +112,12 @@ def prefs_out(prefs: EmailPreference) -> dict:
 
 
 def cron_allowed(x_cron_secret: str | None) -> None:
-    if settings.cron_secret and x_cron_secret != settings.cron_secret:
+    if not settings.cron_secret:
+        # Without a secret these endpoints would let anyone trigger mass sends.
+        if settings.environment == "production":
+            raise HTTPException(status_code=503, detail="CRON_SECRET is not configured on the server.")
+        return
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret, settings.cron_secret):
         raise HTTPException(status_code=401, detail="Invalid cron secret.")
 
 
@@ -224,16 +230,30 @@ async def weak_topics(db: AsyncSession, user: User, prefs: EmailPreference | Non
     return topics or selected_topics[:limit] or ["Selected notes"]
 
 
-def option_set(card: RevisionCard) -> tuple[list[dict[str, str]], str]:
+GENERIC_DISTRACTORS = [
+    "Only the brute-force approach",
+    "It depends on unrelated input size",
+    "No review is needed for this topic",
+    "Use the same answer for every edge case",
+    "Skip the invariant and test manually",
+]
+
+
+def option_set(card: RevisionCard, others: list[RevisionCard] | None = None) -> tuple[list[dict[str, str]], str]:
     correct_text = short_text(card.answer, 100) or "Review the saved answer"
-    distractors = [
-        "Only the brute-force approach",
-        "It depends on unrelated input size",
-        "No review is needed for this topic",
-        "Use the same answer for every edge case",
-        "Skip the invariant and test manually",
-    ]
-    options = [correct_text, *random.sample(distractors, 3)]
+    # Prefer answers from the user's other cards (same topic first) so the wrong
+    # options look plausible; generic lines only fill the gaps.
+    peers = sorted(
+        (other for other in (others or []) if other.id != card.id),
+        key=lambda other: other.topic != card.topic,
+    )
+    distractors: list[str] = []
+    for text in [short_text(other.answer, 100) for other in peers] + random.sample(GENERIC_DISTRACTORS, len(GENERIC_DISTRACTORS)):
+        if text and text != correct_text and text not in distractors:
+            distractors.append(text)
+        if len(distractors) == 3:
+            break
+    options = [correct_text, *distractors]
     random.shuffle(options)
     labels = ["A", "B", "C", "D"]
     rows = [{"label": label, "text": text} for label, text in zip(labels, options)]
@@ -615,7 +635,7 @@ def render_email_action_html(title: str, message: str, rating: str = "", result:
 def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
     sprint_cards = []
     for card in cards:
-        options, correct_label = option_set(card)
+        options, correct_label = option_set(card, cards)
         sprint_cards.append(
             {
             "id": card.id,

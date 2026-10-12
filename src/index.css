@@ -1623,6 +1623,7 @@ progress::-moz-progress-bar {
 
 .verify-banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
@@ -1630,6 +1631,11 @@ progress::-moz-progress-bar {
   border: 1px solid color-mix(in srgb, var(--orange) 38%, transparent);
   border-radius: 16px;
   background: var(--orange-soft);
+}
+
+.verify-banner .btn {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .verify-banner strong,

@@ -6,6 +6,7 @@ from datetime import date, datetime, time, timezone
 from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Table, Text, Time, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.crypto import EncryptedText
 from app.models.base import Base
 
 
@@ -267,10 +268,20 @@ class GitHubConnection(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_str)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True, nullable=False)
     github_username: Mapped[str] = mapped_column(String(120), default="")
-    access_token: Mapped[str] = mapped_column(Text, nullable=False)
+    access_token: Mapped[str] = mapped_column(EncryptedText, nullable=False)
     repo_full_name: Mapped[str] = mapped_column(String(300), default="")
     default_branch: Mapped[str] = mapped_column(String(80), default="main")
     connected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     user: Mapped["User"] = relationship(back_populates="github_connection")
+
+
+class ExtensionPairingCode(Base):
+    __tablename__ = "extension_pairing_codes"
+
+    # Only a SHA-256 of the code is stored, so a DB read can't be replayed as a pairing code.
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

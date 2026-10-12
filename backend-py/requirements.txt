@@ -16,6 +16,7 @@ alembic==1.15.2
 
 # Auth — JWT + password hashing
 python-jose[cryptography]==3.4.0
+cryptography>=42
 passlib[bcrypt]==1.7.4
 bcrypt==4.3.0
 

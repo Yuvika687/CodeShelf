@@ -5,12 +5,13 @@ on:
     - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
+concurrency:
+  group: cron-daily
+  cancel-in-progress: false
+
 jobs:
-  trigger:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call cron-daily endpoint
-        run: |
-          curl -sf -X POST "https://codeshelf-vwb9.onrender.com/api/email/cron-daily" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            --max-time 60
+  call:
+    uses: ./.github/workflows/_cron-call.yml
+    with:
+      endpoint: cron-daily
+    secrets: inherit

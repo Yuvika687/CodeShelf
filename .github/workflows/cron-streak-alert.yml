@@ -5,12 +5,13 @@ on:
     - cron: "0 15 * * *"
   workflow_dispatch: {}
 
+concurrency:
+  group: cron-streak-alert
+  cancel-in-progress: false
+
 jobs:
-  trigger:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call cron-streak-alert endpoint
-        run: |
-          curl -sf -X POST "https://codeshelf-vwb9.onrender.com/api/email/cron-streak-alert" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            --max-time 60
+  call:
+    uses: ./.github/workflows/_cron-call.yml
+    with:
+      endpoint: cron-streak-alert
+    secrets: inherit

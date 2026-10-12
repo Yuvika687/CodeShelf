@@ -96,6 +96,7 @@ export const authApi = {
   signup: (payload) => api('/auth/signup', { method: 'POST', body: payload }),
   login: (payload) => api('/auth/login', { method: 'POST', body: payload }),
   me: () => api('/auth/me'),
+  resendVerification: () => api('/auth/resend-verification', { method: 'POST' }),
 }
 
 export const dashboardApi = { get: () => api('/dashboard') }

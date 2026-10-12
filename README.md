@@ -28,7 +28,7 @@ CodeShelf is a **spaced-repetition revision platform** built for developers who 
 | Module | Description |
 |---|---|
 | **📚 Knowledge Library** | Concept, problem, mistake, command, interview, and quick recall notes with topic/difficulty filters |
-| **🧠 Revision Engine** | SM-2 spaced repetition with forgot / hard / good / easy ratings and streak tracking |
+| **🧠 Revision Engine** | Spaced repetition (SM-2-inspired intervals: forgot → 1 day, hard → +1, good → +4, easy → ×2) with memory strength and streak tracking |
 | **🎧 Walk Mode** | Audio-first revision — learn by listening with text-to-speech while walking |
 | **✈️ Travel Mode** | Download an offline pack to localStorage, review without internet, sync when back online |
 | **🐛 Mistake Book** | Capture wrong approaches, correct logic, prevention tips — turn errors into memory |
@@ -121,6 +121,8 @@ GEMINI_API_KEY=...             # AI card generation
 HF_API_KEY=hf_...              # Summaries
 GITHUB_CLIENT_ID=...           # GitHub integration
 GITHUB_CLIENT_SECRET=...
+CRON_SECRET=...                # Required in production for the scheduled email endpoints
+TOKEN_ENCRYPTION_KEY=...       # Optional; encrypts stored GitHub tokens (defaults to a key derived from JWT_SECRET)
 ```
 
 ### 3. Run
@@ -223,6 +225,8 @@ paid Render Cron Job is needed.
 
 - Add a repository secret named `CRON_SECRET`
 - Set the same value as `CRON_SECRET` on the backend service
+- If the secret is missing the workflows skip with a warning instead of failing; a mismatch fails with a clear error
+- Optionally set a repository **variable** `CODESHELF_API_URL` to point the jobs at a different backend
 - Each workflow can also be run manually from the **Actions** tab
 
 ---

@@ -1,6 +1,6 @@
 import { Bell, Clock, Flame, Mail, Send, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { emailApi, notesApi } from '../api/client.js'
+import { authApi, emailApi, notesApi } from '../api/client.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { Field } from './Upload.jsx'
 
@@ -29,7 +29,7 @@ const styleOptions = [
 ]
 
 export default function EmailSettings() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const [prefs, setPrefs] = useState(null)
   const [preview, setPreview] = useState(null)
   const [advanced, setAdvanced] = useState(false)
@@ -39,6 +39,13 @@ export default function EmailSettings() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const status = new URLSearchParams(window.location.search).get('status')
+    if (status === 'verified') {
+      refreshUser().catch(() => {})
+      setMessage('Email verified. You can now enable reminders.')
+    } else if (status === 'verify-invalid') {
+      setError('That verification link is invalid or expired. Send a new one below.')
+    }
     emailApi.preferences().then((data) => setPrefs(data.preferences)).catch((err) => setError(err.message))
     notesApi.list({}).then((data) => setNotes(data.notes || [])).catch(() => setNotes([]))
   }, [])
@@ -103,6 +110,18 @@ export default function EmailSettings() {
     await run('preview', async () => setPreview(await emailApi.preview()))
   }
 
+  async function resendVerification() {
+    await run('verify', async () => {
+      const data = await authApi.resendVerification()
+      if (data.already_verified) {
+        await refreshUser()
+        setMessage('Your email is already verified.')
+        return
+      }
+      setMessage(`Verification link sent to ${data.email}. Open it, then come back here.`)
+    })
+  }
+
   async function sendTest() {
     await run('test', async () => {
       const data = await emailApi.sendTest()
@@ -145,7 +164,10 @@ export default function EmailSettings() {
       {!user?.email_verified ? (
         <section className="verify-banner">
           <ShieldCheck size={20} />
-          <div><strong>Google verification required.</strong><span>Reminders can be enabled only for your verified Google email.</span></div>
+          <div><strong>Verify your email to enable reminders.</strong><span>We sent a link to {user?.email}. Didn't get it? Send a new one.</span></div>
+          <button className="btn btn-secondary" onClick={resendVerification} disabled={busy === 'verify'}>
+            <Send size={16} /> Resend link
+          </button>
         </section>
       ) : null}
 

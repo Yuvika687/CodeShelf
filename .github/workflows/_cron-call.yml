@@ -1,0 +1,49 @@
+name: Cron - Call CodeShelf endpoint
+
+on:
+  workflow_call:
+    inputs:
+      endpoint:
+        description: Path under /api/email, e.g. cron-daily
+        required: true
+        type: string
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      API_BASE: ${{ vars.CODESHELF_API_URL || 'https://codeshelf-vwb9.onrender.com' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Call ${{ inputs.endpoint }}
+        run: |
+          set -u
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::warning::CRON_SECRET repository secret is not set — skipping. Add it under Settings → Secrets and variables → Actions (same value as CRON_SECRET on Render)."
+            exit 0
+          fi
+
+          # Render's free tier sleeps; wake it before the real call.
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${API_BASE}/api/health" || true)
+            echo "health attempt ${i}: ${code}"
+            [ "${code}" = "200" ] && break
+            sleep 15
+          done
+
+          for i in 1 2 3; do
+            code=$(curl -s -o response.json -w '%{http_code}' --max-time 120 -X POST \
+              "${API_BASE}/api/email/${{ inputs.endpoint }}" \
+              -H "X-Cron-Secret: ${CRON_SECRET}" || true)
+            echo "attempt ${i}: HTTP ${code}"
+            cat response.json 2>/dev/null; echo
+            case "${code}" in
+              2??) exit 0 ;;
+              401) echo "::error::Backend rejected CRON_SECRET — the GitHub secret does not match CRON_SECRET on Render."; exit 1 ;;
+              503) echo "::error::CRON_SECRET is not configured on the Render backend."; exit 1 ;;
+            esac
+            sleep 20
+          done
+          echo "::error::${{ inputs.endpoint }} failed after retries (last HTTP ${code})."
+          exit 1

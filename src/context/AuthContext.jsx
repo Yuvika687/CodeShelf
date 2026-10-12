@@ -59,6 +59,11 @@ export function AuthProvider({ children }) {
         throw error
       }
     },
+    async refreshUser() {
+      const data = await authApi.me()
+      setUser(data.user)
+      return data.user
+    },
     logout() {
       setToken(null)
       setUser(null)

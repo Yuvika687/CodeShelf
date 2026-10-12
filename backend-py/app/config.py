@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     port: int = 8000
     cron_secret: str = ""
+    token_encryption_key: str = ""
 
     resend_api_key: str = ""
     resend_from_email: str = "CodeShelf <onboarding@resend.dev>"
