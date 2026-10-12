@@ -4,7 +4,6 @@ import html
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -14,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import async_session_factory, get_db
 from app.deps import get_current_user
+from app.mailer import deliver
 from app.jwt_utils import create_access_token, create_email_verification_token, decode_email_verification_token
 from app.models import EmailLog, User
 from app.routes.utils import ensure_email_preferences, user_out
@@ -31,33 +31,10 @@ def frontend_url(path: str, params: dict[str, str] | None = None) -> str:
 
 
 async def send_auth_email(db: AsyncSession, user: User, subject: str, body: str, html_body: str, email_type: str) -> None:
-    status_value = "printed"
-    error_message = ""
-    message_id = ""
-    if settings.resend_api_key:
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                response = await client.post(
-                    "https://api.resend.com/emails",
-                    headers={"Authorization": f"Bearer {settings.resend_api_key}", "Content-Type": "application/json"},
-                    json={
-                        "from": settings.resend_from_email,
-                        "to": [user.email],
-                        "subject": subject,
-                        "html": html_body,
-                        "text": body,
-                    },
-                )
-            status_value = "sent" if response.is_success else "failed"
-            data = response.json() if response.content else {}
-            message_id = data.get("id", "") if isinstance(data, dict) else ""
-            if not response.is_success:
-                error_message = response.text[:1000]
-        except Exception as exc:
-            status_value = "failed"
-            error_message = str(exc)
-    else:
-        print(f"\n--- CodeShelf {email_type} to {user.email} ---\nSubject: {subject}\n{body}\n")
+    result = await deliver(user.email, subject, html_body, body, to_name=user.name or "", label=email_type)
+    status_value = result.status
+    error_message = result.error_message
+    message_id = result.message_id
     db.add(
         EmailLog(
             user_id=user.id,

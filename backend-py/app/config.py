@@ -53,6 +53,9 @@ class Settings(BaseSettings):
 
     resend_api_key: str = ""
     resend_from_email: str = "CodeShelf <onboarding@resend.dev>"
+    brevo_api_key: str = ""
+    mail_from_email: str = ""
+    mail_from_name: str = "CodeShelf"
     gemini_api_key: str = ""
     hf_api_key: str = ""
     hf_space_id: str = ""

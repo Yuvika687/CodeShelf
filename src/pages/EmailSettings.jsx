@@ -129,7 +129,7 @@ export default function EmailSettings() {
         throw new Error(data.error_message || 'Email provider rejected the test email.')
       }
       if (data.status === 'printed') {
-        setMessage('Test email was printed in backend logs because RESEND_API_KEY is not configured for this environment.')
+        setMessage('Test email was printed in backend logs because no email provider (BREVO_API_KEY or RESEND_API_KEY) is configured for this environment.')
         return
       }
       setMessage(`Test email ${data.status}. Check ${user?.email || 'your verified inbox'}.`)

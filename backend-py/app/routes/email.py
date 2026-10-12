@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import GEMINI_MODEL, get_settings
 from app.database import get_db
 from app.deps import get_current_user
+from app.mailer import deliver
 from app.models import DailyActivity, EmailLog, EmailPreference, Mistake, ReviewLog, RevisionCard, User
 from app.routes.utils import MIN_DAILY_CARDS, ensure_email_preferences, get_or_create_today_activity, next_interval, recalc_streak
 
@@ -833,37 +834,10 @@ def render_email_session_html(user: User, cards: list[RevisionCard]) -> str:
 
 
 async def send_email(db: AsyncSession, user: User, payload: dict) -> dict:
-    status = "printed"
-    error_message = ""
-    message_id = ""
-    if settings.resend_api_key:
-        try:
-            async with httpx.AsyncClient(timeout=20) as client:
-                response = await client.post(
-                    "https://api.resend.com/emails",
-                    headers={"Authorization": f"Bearer {settings.resend_api_key}", "Content-Type": "application/json"},
-                    json={
-                        "from": settings.resend_from_email,
-                        "to": [user.email],
-                        "subject": payload["subject"],
-                        "html": payload["html"],
-                        "text": payload["text"],
-                    },
-                )
-            status = "sent" if response.is_success else "failed"
-            data = response.json() if response.content else {}
-            message_id = data.get("id", "") if isinstance(data, dict) else ""
-            if not response.is_success:
-                error_message = response.text[:1000]
-        except Exception as exc:
-            status = "failed"
-            error_message = str(exc)
-    else:
-        if settings.environment.lower() == "production":
-            status = "failed"
-            error_message = "RESEND_API_KEY is not configured; email was not sent."
-        else:
-            print(f"\n--- CodeShelf email preview to {user.email} ---\nSubject: {payload['subject']}\n{payload['text']}\n")
+    result = await deliver(user.email, payload["subject"], payload["html"], payload["text"], to_name=user.name or "", label="email preview")
+    status = result.status
+    error_message = result.error_message
+    message_id = result.message_id
 
     db.add(
         EmailLog(
