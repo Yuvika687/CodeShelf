@@ -171,5 +171,5 @@ export const aiApi = {
 
 export const activityApi = {
   streak: () => api('/streak'),
-  activity: () => api('/activity'),
+  activity: (params) => api(`/activity${q(params)}`),
 }

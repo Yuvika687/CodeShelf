@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,9 +28,13 @@ async def streak(user: User = Depends(get_current_user), db: AsyncSession = Depe
 
 
 @router.get("/activity")
-async def activity(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def activity(
+    days: int = Query(60, ge=1, le=371),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(DailyActivity).where(DailyActivity.user_id == user.id).order_by(DailyActivity.date.desc()).limit(60)
+        select(DailyActivity).where(DailyActivity.user_id == user.id).order_by(DailyActivity.date.desc()).limit(days)
     )
     rows = result.scalars().all()
     return {

@@ -12,12 +12,13 @@ export default function Profile() {
 
   useEffect(() => {
     activityApi.streak().then(setStreak).catch(() => {})
-    activityApi.activity().then((data) => setActivity(data.activity || [])).catch(() => {})
+    activityApi.activity({ days: HEATMAP_DAYS }).then((data) => setActivity(data.activity || [])).catch(() => {})
   }, [])
 
-  const totalCards = activity.reduce((sum, d) => sum + (d.cards_reviewed || 0), 0)
-  const totalMistakes = activity.reduce((sum, d) => sum + (d.mistakes_fixed || 0), 0)
-  const completeDays = activity.filter(d => d.completed_today).length
+  const recent = activity.slice(0, 60)
+  const totalCards = recent.reduce((sum, d) => sum + (d.cards_reviewed || 0), 0)
+  const totalMistakes = recent.reduce((sum, d) => sum + (d.mistakes_fixed || 0), 0)
+  const completeDays = recent.filter(d => d.completed_today).length
   const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Explorer'
 
   return (
@@ -87,8 +88,8 @@ export default function Profile() {
         <div className="pro-neural-head">
           <div>
             <span className="pro-tag">&gt; neural_activity_map</span>
-            <h2>Last 60 Days</h2>
-            <p className="pro-neural-sub">Memory retention heatmap — each cell is one day of revision</p>
+            <h2>Last 12 Months</h2>
+            <p className="pro-neural-sub">Each square is one day — brighter means more cards revised</p>
           </div>
           <div className="pro-neural-score">
             <Flame size={18} />
@@ -113,11 +114,13 @@ export default function Profile() {
             <span>{totalMistakes} mistakes fixed</span>
           </div>
           <div className="pro-heat-legend">
+            <span>Less</span>
             <i className="pro-hc l0" />
             <i className="pro-hc l1" />
             <i className="pro-hc l2" />
             <i className="pro-hc l3" />
             <i className="pro-hc l4" />
+            <span>More</span>
           </div>
         </div>
       </section>
@@ -129,7 +132,7 @@ export default function Profile() {
           <h3>Recent Sessions</h3>
         </div>
         <div className="pro-log-list">
-          {activity.length ? activity.map((day) => (
+          {recent.length ? recent.map((day) => (
             <div className={`pro-log-row ${day.completed_today ? 'complete' : ''}`} key={day.date}>
               <div className="pro-log-pip" />
               <div className="pro-log-date">{day.date}</div>
@@ -175,31 +178,68 @@ function MetricOrb({ icon: Icon, label, value, color, glyph }) {
   )
 }
 
+const HEATMAP_DAYS = 371
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function localKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 function ActivityHeatmap({ activity, minimum }) {
   const byDate = new Map((activity || []).map((day) => [day.date, day]))
-  const days = []
   const today = new Date()
-  for (let offset = 59; offset >= 0; offset -= 1) {
-    const date = new Date(today)
-    date.setDate(today.getDate() - offset)
-    const key = date.toISOString().slice(0, 10)
-    const item = byDate.get(key) || { date: key, cards_reviewed: 0, mistakes_fixed: 0, completed_today: false }
-    days.push(item)
+  today.setHours(0, 0, 0, 0)
+  // GitHub-style: one column per week (Sun → Sat), oldest week on the left.
+  const start = new Date(today)
+  start.setDate(today.getDate() - (HEATMAP_DAYS - 1))
+  start.setDate(start.getDate() - start.getDay())
+  const target = Math.max(1, minimum)
+  const weeks = []
+  for (let cursor = new Date(start); cursor <= today; ) {
+    const week = []
+    for (let d = 0; d < 7; d += 1) {
+      const key = localKey(cursor)
+      const day = cursor <= today ? (byDate.get(key) || { date: key, cards_reviewed: 0, mistakes_fixed: 0 }) : null
+      week.push({ key, month: cursor.getMonth(), dom: cursor.getDate(), day })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+    weeks.push(week)
   }
+  const level = (n) => (n <= 0 ? 0 : n < target ? 1 : n < target * 2 ? 2 : n < target * 3 ? 3 : 4)
 
   return (
     <div className="pro-heatmap">
-      {days.map((day, i) => {
-        const level = day.completed_today ? 4 : Math.min(3, Math.ceil((day.cards_reviewed || 0) / Math.max(1, minimum / 3)))
-        return (
-          <span
-            key={day.date}
-            className={`pro-hc l${level}`}
-            title={`${day.date}: ${day.cards_reviewed || 0} cards, ${day.mistakes_fixed || 0} mistakes`}
-            style={{ animationDelay: `${i * 15}ms` }}
-          />
-        )
-      })}
+      <div className="pro-heat-days" aria-hidden="true">
+        <span />
+        <span>Mon</span>
+        <span />
+        <span>Wed</span>
+        <span />
+        <span>Fri</span>
+        <span />
+      </div>
+      <div className="pro-heat-body">
+        <div className="pro-heat-months" aria-hidden="true">
+          {weeks.map((week, i) => {
+            const first = week.find((cell) => cell.dom === 1)
+            return <span key={week[0].key}>{first || i === 0 ? MONTHS[(first || week[0]).month] : ''}</span>
+          })}
+        </div>
+        <div className="pro-heat-grid">
+          {weeks.flatMap((week, w) => week.map((cell) => (
+            cell.day
+              ? (
+                <span
+                  key={cell.key}
+                  className={`pro-hc l${level(cell.day.cards_reviewed || 0)}`}
+                  title={`${cell.key}: ${cell.day.cards_reviewed || 0} cards, ${cell.day.mistakes_fixed || 0} mistakes`}
+                  style={{ animationDelay: `${w * 12}ms` }}
+                />
+              )
+              : <span key={cell.key} className="pro-hc empty" />
+          )))}
+        </div>
+      </div>
     </div>
   )
 }
