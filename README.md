@@ -1,246 +1,259 @@
 <div align="center">
 
-# ⟨/⟩ CodeShelf
+<a href="https://code-shelf-eight.vercel.app">
+  <img src="./docs/readme/hero.svg" width="100%" alt="CodeShelf — never forget what you already learned. A spaced-repetition memory engine for developers." />
+</a>
 
-### Your Personal Coding Memory Vault
+<br/>
 
-**Never forget what you already learned.**
+<a href="https://code-shelf-eight.vercel.app"><img src="https://img.shields.io/badge/▶%20%20TRY%20IT%20LIVE-code--shelf--eight.vercel.app-8B5CF6?style=for-the-badge&labelColor=0B0D1F" alt="Try CodeShelf live" height="38"/></a>
 
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Neon](https://img.shields.io/badge/Neon-PostgreSQL-00e5a0?logo=postgresql&logoColor=white)](https://neon.tech)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev)
+<br/><br/>
 
----
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white&labelColor=0B0D1F" alt="React 19"/>
+<img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white&labelColor=0B0D1F" alt="Vite 8"/>
+<img src="https://img.shields.io/badge/FastAPI-async-009688?style=flat-square&logo=fastapi&logoColor=white&labelColor=0B0D1F" alt="FastAPI"/>
+<img src="https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=flat-square&logo=postgresql&logoColor=white&labelColor=0B0D1F" alt="PostgreSQL on Neon"/>
+<img src="https://img.shields.io/badge/Gemini-AI%20cards-8E75B2?style=flat-square&logo=googlegemini&logoColor=white&labelColor=0B0D1F" alt="Gemini"/>
+<img src="https://img.shields.io/badge/Hugging%20Face-summaries-FFD21E?style=flat-square&logo=huggingface&logoColor=black&labelColor=0B0D1F" alt="Hugging Face"/>
+<img src="https://img.shields.io/badge/Chrome-extension-4285F4?style=flat-square&logo=googlechrome&logoColor=white&labelColor=0B0D1F" alt="Chrome extension"/>
+<img src="https://img.shields.io/badge/Expo-mobile-000020?style=flat-square&logo=expo&logoColor=white&labelColor=0B0D1F" alt="Expo mobile"/>
+
+<br/>
+
+<sub>
+  <a href="#-see-it-in-action">Demo</a> ·
+  <a href="#-features">Features</a> ·
+  <a href="#-architecture">Architecture</a> ·
+  <a href="#-engineering-highlights">Engineering</a> ·
+  <a href="#-run-it-locally">Run locally</a>
+</sub>
 
 </div>
 
-## ✦ What is CodeShelf?
+<br/>
 
-CodeShelf is a **spaced-repetition revision platform** built for developers who refuse to forget what they've learned. It transforms raw notes, solved problems, and coding mistakes into an intelligent recall system — with AI-generated flashcards, walk-mode audio revision, offline travel packs, and verified email reminders.
+> **The problem:** you solve a sliding-window problem, learn a SQL window function, fix a Docker volume bug — and three weeks later it's gone.
+> **CodeShelf** turns everything you learn into an AI-generated, spaced-repetition recall system that comes back to you — on screen, in your headphones, offline, and in your inbox.
 
-> _Think of it as Anki meets Notion, built specifically for DSA, SQL, System Design, DevOps, and interview prep._
+<br/>
 
----
+## 🎬 See it in action
 
-## ⚡ Core Features
+<div align="center">
+  <a href="https://code-shelf-eight.vercel.app">
+    <img src="./docs/readme/demo.gif" width="100%" alt="CodeShelf walkthrough: dashboard, today's revision, answer reveal, concept memory, walk mode, library, profile heatmap and email studio." />
+  </a>
+  <sub>Live at <a href="https://code-shelf-eight.vercel.app"><b>code-shelf-eight.vercel.app</b></a> — sign up in seconds. <i>First request may take ~30s while the free-tier API wakes up.</i></sub>
+</div>
 
-| Module | Description |
-|---|---|
-| **📚 Knowledge Library** | Concept, problem, mistake, command, interview, and quick recall notes with topic/difficulty filters |
-| **🧠 Revision Engine** | Spaced repetition (SM-2-inspired intervals: forgot → 1 day, hard → +1, good → +4, easy → ×2) with memory strength and streak tracking |
-| **🎧 Walk Mode** | Audio-first revision — learn by listening with text-to-speech while walking |
-| **✈️ Travel Mode** | Download an offline pack to localStorage, review without internet, sync when back online |
-| **🐛 Mistake Book** | Capture wrong approaches, correct logic, prevention tips — turn errors into memory |
-| **💻 Problem Tracker** | LeetCode/practice tracker with pattern, approach, code, and optional GitHub commit pipeline |
-| **📬 Email Studio** | Verified Gmail reminders with customizable style, timing, topic filters, and preview |
-| **🤖 AI Integration** | HuggingFace BART summaries, Gemini-ready card generation, and LLM JSON import |
-| **🔌 Browser Extension** | Chrome extension for one-click LeetCode problem capture |
-| **🔥 Streaks** | Daily review streaks with minimum card thresholds and progress tracking |
+<br/>
 
----
+<img src="./docs/readme/memory-loop.svg" width="100%" alt="The memory loop: capture → generate → schedule → revise → remind, with weak topics feeding back in." />
+
+<br/>
+
+## ✨ Features
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/dashboard.png" alt="Command-center dashboard" />
+      <h3>🛰️ Command-center dashboard</h3>
+      Due cards, streak, weak-topic rings and a live revision queue — everything you should revise today on one screen.
+    </td>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/revision.png" alt="Today's revision" />
+      <h3>🧠 Spaced-repetition engine</h3>
+      Rate each card <kbd>1</kbd> Again · <kbd>2</kbd> Hard · <kbd>3</kbd> Good · <kbd>4</kbd> Easy (reveal with <kbd>Space</kbd>). Intervals and memory strength update per card; every review is logged.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/concept.png" alt="Concept memory page" />
+      <h3>🤖 AI concept memory</h3>
+      Gemini generates six typed cards per note — concept, why, complexity, edge case, code recall, interview — and a branching recall chat grounded in <i>your</i> notes, mistakes and Wikipedia context.
+    </td>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/walk-mode.png" alt="Walk mode" />
+      <h3>🎧 Walk mode</h3>
+      Audio-first revision with voice selection and auto-play — learn DSA on a walk. Travel mode packs cards into local storage for offline review and syncs ratings when you're back online.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/library.png" alt="Knowledge library" />
+      <h3>📚 Knowledge library</h3>
+      Concept, problem, mistake, command, interview and quick-recall notes with tag, topic and full-text search, a CodeMirror editor, and LLM-JSON card import.
+    </td>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/profile.png" alt="Profile and streak heatmap" />
+      <h3>🔥 Streaks &amp; activity map</h3>
+      A day counts once you clear five cards. Current/longest streak and a 60-day activity heatmap keep the habit honest.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/email.png" alt="Email studio" />
+      <h3>📬 Inbox recall sprints</h3>
+      Verified-email reminders with multiple-choice questions you can answer <i>from the email</i>, signed one-click review links, weekly digests and streak alerts.
+    </td>
+    <td width="50%" valign="top">
+      <img src="./docs/readme/screens/problems.png" alt="Problem tracker" />
+      <h3>💻 Problem tracker + GitHub sync</h3>
+      Track LeetCode problems by pattern and status; the Chrome and VS Code extensions capture solutions and commit them to your GitHub repo with a generated README.
+    </td>
+  </tr>
+</table>
+
+<sub>Screens captured from a local instance seeded with demo data.</sub>
+
+<br/>
 
 ## 🏗 Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                    Frontend (Vite + React 19)        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │Dashboard │ │ Library  │ │Walk Mode │ │ Email  │ │
-│  │(CMD UI)  │ │ Explorer │ │ (Audio)  │ │ Studio │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
-│       └─────────────┴───────────┴────────────┘      │
-│                         │ JWT Auth                   │
-├─────────────────────────┼───────────────────────────┤
-│                    Backend (FastAPI)                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │  Notes   │ │ Revision │ │ Problems │ │ Email  │ │
-│  │  CRUD    │ │  Engine  │ │ + GitHub │ │ Sender │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
-│       └─────────────┴───────────┴────────────┘      │
-│                         │ SQLAlchemy                  │
-├─────────────────────────┼───────────────────────────┤
-│              Neon PostgreSQL (Serverless)             │
-└─────────────────────────────────────────────────────┘
-```
+<img src="./docs/readme/architecture.svg" width="100%" alt="Architecture: web, Chrome, VS Code and mobile clients → FastAPI on Render → Neon PostgreSQL, Gemini, Hugging Face, Gmail relay and GitHub API; GitHub Actions cron triggers scheduled email." />
 
----
+| Layer | Stack |
+|:--|:--|
+| **Frontend** | React 19, Vite 8, React Router 7, CodeMirror 6, Lucide, custom canvas nebula + cursor design system — deployed on **Vercel** |
+| **Backend** | FastAPI (async), SQLAlchemy 2 async, Alembic (10 migrations), Pydantic settings — deployed on **Render** |
+| **Data** | Neon serverless PostgreSQL (SQLite for local dev) — 15 tables |
+| **AI** | Gemini (typed card generation, recall chat, email intros), Hugging Face Space summaries, offline fallbacks |
+| **Clients** | Web app · Chrome MV3 extension · VS Code extension · Expo mobile app |
+| **Ops** | GitHub Actions cron (daily / weekly / streak / cleanup), health checks, cold-start-aware retries |
 
-## 🛠 Tech Stack
+<br/>
 
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 19, Vite 8, React Router 7, CodeMirror 6, Lucide Icons |
-| **Backend** | FastAPI, SQLAlchemy (async), Alembic migrations |
-| **Database** | Neon PostgreSQL (serverless) — falls back to SQLite locally |
-| **Auth** | Email/password (bcrypt) → JWT tokens |
-| **Email** | Resend API with HTML templates — console fallback for dev |
-| **AI** | HuggingFace Inference (BART), Gemini API (flash), LLM JSON import |
-| **GitHub** | OAuth → repo selection → automated solution commits |
-| **Design** | Space-hacker nebula theme, custom cursor, dual theme (dark/light) |
+## 🔬 Engineering highlights
 
----
+<details open>
+<summary><b>Spaced-repetition scheduler</b></summary>
+<br/>
 
-## 🚀 Quick Start
+| Rating | Next interval | Memory strength |
+|:--|:--|:--|
+| Forgot / Again | 1 day | −0.25 |
+| Hard | +1 day (min 2) | +0.05 |
+| Good | +4 days (min 4) | +0.18 |
+| Easy | ×2 (min 7) | +0.30 |
 
-### Prerequisites
+Weak topics are mined from `forgot`/`hard` review logs and fed back into the dashboard, the revision queue and the daily email.
+</details>
 
-- **Node.js** ≥ 18
-- **Python** ≥ 3.11
-- **PostgreSQL** (or use Neon free tier)
+<details>
+<summary><b>Security</b></summary>
+<br/>
 
-### 1. Clone & Install
+- JWT auth with bcrypt password hashing and strict email/password validation.
+- Email verification and every email action link are **signed, expiring, purpose-scoped JWTs** bound to the account email.
+- GitHub OAuth tokens are **Fernet-encrypted at rest** through a SQLAlchemy `TypeDecorator`, with a data migration for existing rows.
+- Extension pairing uses **single-use, SHA-256-hashed codes** consumed atomically (`DELETE … RETURNING`) — the long-lived token never crosses `postMessage`.
+- Cron endpoints require a shared secret (constant-time compare) and refuse to run in production without one; production refuses to boot with the default JWT secret.
+</details>
+
+<details>
+<summary><b>AI pipeline that never breaks the UX</b></summary>
+<br/>
+
+- Gemini is prompted for strict JSON (six typed cards); responses are de-fenced, boundary-extracted, trailing-comma-repaired and validated card by card.
+- Hugging Face summaries run with a 10s budget and fall back to an extractive summary.
+- Every AI feature has a deterministic fallback, so the app works with zero API keys.
+</details>
+
+<details>
+<summary><b>Free-tier engineering</b></summary>
+<br/>
+
+- Render's free tier blocks outbound SMTP, so mail goes through a pluggable `mailer` — a Google Apps Script **Gmail relay over HTTPS** (shared-secret guarded), Brevo, or Resend.
+- Scheduled jobs run on **GitHub Actions** instead of paid cron: a reusable workflow wakes the sleeping instance, retries transient failures, and fails loudly only on real misconfiguration.
+- Email sends are slot-based per user timezone with duplicate protection, so a cron firing every 30 min never double-sends.
+</details>
+
+<br/>
+
+## 🚀 Run it locally
+
+**Prerequisites:** Node ≥ 18, Python ≥ 3.11. Works out of the box with SQLite — add a `.env` in the repo root only to configure the variables below.
 
 ```bash
-git clone https://github.com/your-username/codeshelf.git
-cd codeshelf
+git clone https://github.com/Yuvika687/CodeShelf.git && cd CodeShelf
 npm install
 pip install -r backend-py/requirements.txt
+npm run migrate      # Alembic → SQLite (or Neon if DATABASE_URL is set)
+npm run dev:api      # FastAPI  → http://127.0.0.1:8000/api   (health: /api/health)
+npm run dev          # React    → http://127.0.0.1:5173
 ```
 
-### 2. Environment Setup
+<details>
+<summary><b>Environment variables</b></summary>
+<br/>
 
-```bash
-cp .env.example .env
-cp backend-py/.env.example backend-py/.env
-```
+| Variable | Purpose |
+|:--|:--|
+| `DATABASE_URL` | `postgresql+asyncpg://…neon.tech/db?sslmode=require` (defaults to SQLite) |
+| `JWT_SECRET` | Token signing — **required** in production |
+| `FRONTEND_URL` / `BACKEND_URL` | Public URLs used in redirects and email links |
+| `ENVIRONMENT` | `production` enables strict checks |
+| `CRON_SECRET` | Shared secret for `/api/email/cron-*` (also a GitHub Actions secret) |
+| `GMAIL_SCRIPT_URL` / `GMAIL_SCRIPT_SECRET` | Gmail relay ([`tools/gmail-relay`](tools/gmail-relay/Code.gs)) |
+| `BREVO_API_KEY` + `MAIL_FROM_EMAIL` · `RESEND_API_KEY` | Alternative email providers |
+| `GEMINI_API_KEY` · `HF_API_KEY` · `HF_SPACE_ID` | AI features (optional) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub sync (optional) |
+| `TOKEN_ENCRYPTION_KEY` | Key for stored GitHub tokens (defaults to one derived from `JWT_SECRET`) |
+</details>
 
-Configure in `backend-py/.env`:
-
-```env
-DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@HOST.neon.tech/DB?sslmode=require
-JWT_SECRET=your-secret-key
-FRONTEND_URL=http://localhost:5173
-```
-
-Optional keys for full feature set:
-
-```env
-RESEND_API_KEY=re_...          # Email reminders
-GEMINI_API_KEY=...             # AI card generation
-HF_API_KEY=hf_...              # Summaries
-GITHUB_CLIENT_ID=...           # GitHub integration
-GITHUB_CLIENT_SECRET=...
-CRON_SECRET=...                # Required in production for the scheduled email endpoints
-TOKEN_ENCRYPTION_KEY=...       # Optional; encrypts stored GitHub tokens (defaults to a key derived from JWT_SECRET)
-```
-
-### 3. Run
-
-```bash
-# Terminal 1 — Backend API
-npm run dev:api
-
-# Terminal 2 — Frontend
-npm run dev
-```
-
-| Service | URL |
-|---|---|
-| Frontend | `http://localhost:5173` |
-| API | `http://localhost:8000/api` |
-| Health | `http://localhost:8000/api/health` |
-
----
-
-## 📂 Project Structure
+<details>
+<summary><b>Project structure</b></summary>
+<br/>
 
 ```
-codeshelf/
-├── src/                    # React frontend
-│   ├── pages/              # Route pages (Home, WalkMode, Problems, etc.)
-│   ├── components/         # Layout, NebulaParticles, CursorGlow
-│   ├── context/            # AuthContext (email/password + JWT)
-│   ├── api/                # API client with token management
-│   └── index.css           # Complete design system
-├── backend-py/             # FastAPI backend
+CodeShelf/
+├── src/                     React app — pages, layout, nebula/cursor components, API client
+├── backend-py/
 │   ├── app/
-│   │   ├── main.py         # FastAPI app with CORS
-│   │   ├── routers/        # notes, revision, problems, email, github
-│   │   ├── models/         # SQLAlchemy models
-│   │   └── services/       # AI, email, GitHub services
-│   └── alembic/            # Database migrations
-├── mobile/                 # Expo (React Native) mobile app
-├── extensions/             # Chrome & VS Code extensions
-├── .github/workflows/      # Scheduled email jobs (GitHub Actions cron)
-├── public/                 # Static assets & favicon
-└── index.html              # Entry point
+│   │   ├── routes/          auth · notes · problems · mistakes · revision · concepts
+│   │   │                    email · github · extension · dashboard · activity · ai
+│   │   ├── models/          SQLAlchemy models (15 tables)
+│   │   ├── mailer.py        Gmail relay / Brevo / Resend delivery
+│   │   ├── crypto.py        at-rest encryption for third-party tokens
+│   │   ├── ai_service.py    Gemini card generation + JSON repair
+│   │   └── github_utils.py  OAuth, repo listing, solution commits
+│   ├── alembic/             10 migrations
+│   └── render.yaml          Render blueprint
+├── extensions/              Chrome (MV3) + VS Code extensions
+├── mobile/                  Expo / React Native app
+├── tools/gmail-relay/       Google Apps Script mail relay
+└── .github/workflows/       scheduled email jobs
 ```
+</details>
 
----
+<details>
+<summary><b>Extensions &amp; mobile</b></summary>
+<br/>
 
-## 📱 Mobile App & Tag Search
+- **Chrome** — load `extensions/chrome` unpacked (or the zip in `public/downloads`), click *Connect CodeShelf*, then *Capture current page* on any LeetCode problem. See [EXTENSIONS.md](EXTENSIONS.md).
+- **VS Code** — open `extensions/vscode`, press <kbd>F5</kbd>, run `CodeShelf: Connect` / `Save Current File` / `Commit Current File to GitHub`.
+- **Mobile** — `cd mobile && npm install && npm start`, scan the QR code with Expo Go.
+</details>
 
-The `mobile/` folder is an Expo app that talks to the same FastAPI backend:
-
-- **Login** — email/password, JWT kept in secure storage
-- **Notes list** — search bar plus Arrays / DP / SQL tag chips
-- **Note detail** — full note with a **Summarize** button (Hugging Face summary API)
-
-```bash
-cd mobile
-npm install
-npm start        # scan the QR code with Expo Go
-```
-
-Notes support tag filtering on the API: `GET /api/notes?search=binary&tag=Arrays`
-(case-insensitive, and the two filters can be combined).
-
----
-
-## 🎨 Design System
-
-CodeShelf uses a custom **Space Command Center** aesthetic:
-
-- **Nebula particles** — animated canvas star field with constellation lines
-- **Custom cursor** — dot + ring with magnetic snapping on interactive elements
-- **Glassmorphism** — frosted glass cards with `backdrop-filter: blur()`
-- **Dual theme** — Obsidian Dark (default) + Pearl Light
-- **Spring animations** — physics-based cubic-bezier transitions
-- **JetBrains Mono** — monospace font for terminal/code aesthetic
-- **Inter** — primary UI font for readability
-
----
+<br/>
 
 ## 🌐 Deployment
 
-### Frontend → Vercel
+| Piece | Where | Notes |
+|:--|:--|:--|
+| Frontend | **Vercel** | `VITE_API_BASE_URL=https://<api>.onrender.com/api` |
+| API | **Render** (`backend-py/render.yaml`) | build runs `alembic upgrade head` |
+| Database | **Neon** | serverless Postgres |
+| Scheduled email | **GitHub Actions** | add repo secret `CRON_SECRET` (same value as the API) |
 
-```bash
-# Set environment variable:
-VITE_API_BASE_URL=https://your-api.onrender.com/api
-```
-
-### Backend → Render
-
-- Use `backend-py/render.yaml`
-- Set `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`
-- Build command runs Alembic migrations automatically
-
-### Scheduled Emails → GitHub Actions (free)
-
-Workflows in `.github/workflows/` call the authenticated cron endpoints on a schedule
-(daily reminder every 30 min, weekly digest, streak alert, monthly log cleanup), so no
-paid Render Cron Job is needed.
-
-- Add a repository secret named `CRON_SECRET`
-- Set the same value as `CRON_SECRET` on the backend service
-- If the secret is missing the workflows skip with a warning instead of failing; a mismatch fails with a clear error
-- Optionally set a repository **variable** `CODESHELF_API_URL` to point the jobs at a different backend
-- Each workflow can also be run manually from the **Actions** tab
-
----
-
-## 📜 License
-
-This project is private and not currently open-sourced.
-
----
+<br/>
 
 <div align="center">
 
-**Built with obsession for learning retention.**
+**Built by [Yuvika Malhotra](https://github.com/Yuvika687)** · [LinkedIn](https://linkedin.com/in/yuvikamalhotra) · [Email](mailto:yuvikamalhotra1414@gmail.com)
 
-*CodeShelf — because forgetting is not an option.*
+<sub>© 2026 Yuvika Malhotra. All rights reserved.</sub>
 
 </div>

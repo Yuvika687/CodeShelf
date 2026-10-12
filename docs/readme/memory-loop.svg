@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" role="img" aria-label="The CodeShelf memory loop: capture, generate cards, schedule with spaced repetition, revise, get reminded — weak topics feed back in.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#06070F"/><stop offset="1" stop-color="#0C0A1E"/></linearGradient>
+    <linearGradient id="flow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8B5CF6"/><stop offset=".25" stop-color="#EC4899"/><stop offset=".5" stop-color="#F59E0B"/><stop offset=".75" stop-color="#2DD4BF"/><stop offset="1" stop-color="#60A5FA"/>
+    </linearGradient>
+    <radialGradient id="glow"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#C4B5FD"/><stop offset="1" stop-color="#8B5CF6" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#fff" stroke-opacity=".03"/></pattern>
+    <style>
+      .s{font-family:'Inter','Segoe UI',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif}
+      .m{font-family:'JetBrains Mono','SF Mono',ui-monospace,Menlo,Consolas,monospace}
+      .dash{animation:dash 1.6s linear infinite}
+      @keyframes dash{to{stroke-dashoffset:-28}}
+    </style>
+  </defs>
+  <rect width="1280" height="300" rx="20" fill="url(#bg)"/>
+  <rect width="1280" height="300" rx="20" fill="url(#grid)"/>
+  <text x="40" y="42" class="m" font-size="12.5" letter-spacing="3" fill="#A9AED6">THE MEMORY LOOP</text>
+  <text x="1240" y="42" text-anchor="end" class="m" font-size="12" fill="#5EEAD4">● running</text>
+  <path id="loop" d="M150 128 H1130 C1240 128 1240 262 1090 262 H190 C40 262 40 128 150 128" fill="none" stroke="url(#flow)" stroke-opacity=".28" stroke-width="2"/>
+  <path d="M150 128 H1130 C1240 128 1240 262 1090 262 H190 C40 262 40 128 150 128" fill="none" stroke="url(#flow)" stroke-opacity=".7" stroke-width="2" stroke-dasharray="6 22" class="dash"/>
+  <text x="640" y="256" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">weak topics &amp; missed cards feed back into the next loop ↺</text>
+  
+  <g>
+    <circle cx="150" cy="128" r="34" fill="none" stroke="#8B5CF6" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" dur="10s" repeatCount="indefinite" values=".9;.5;0;0" keyTimes="0;0.040;0.120;1"/>
+      <animate attributeName="r" dur="10s" repeatCount="indefinite" values="40;58;70;70" keyTimes="0;0.040;0.120;1"/>
+    </circle>
+    <circle cx="150" cy="128" r="34" fill="#0B0D1F" stroke="#8B5CF6" stroke-opacity=".75" stroke-width="1.5"/>
+    <circle cx="150" cy="128" r="26" fill="#8B5CF6" fill-opacity=".14"/>
+    <text x="150" y="135" text-anchor="middle" class="m" font-size="18" font-weight="800" fill="#C4B5FD">01</text>
+    <text x="150" y="194" text-anchor="middle" class="s" font-size="16" font-weight="800" letter-spacing="2.5" fill="#fff">CAPTURE</text>
+    <text x="150" y="216" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">notes · problems · mistakes</text>
+  </g>
+  <g>
+    <circle cx="395" cy="128" r="34" fill="none" stroke="#EC4899" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" dur="10s" repeatCount="indefinite" values="0;0;.9;0;0" keyTimes="0;0.109;0.150;0.230;1"/>
+      <animate attributeName="r" dur="10s" repeatCount="indefinite" values="34;34;58;70;70" keyTimes="0;0.109;0.150;0.230;1"/>
+    </circle>
+    <circle cx="395" cy="128" r="34" fill="#0B0D1F" stroke="#EC4899" stroke-opacity=".75" stroke-width="1.5"/>
+    <circle cx="395" cy="128" r="26" fill="#EC4899" fill-opacity=".14"/>
+    <text x="395" y="135" text-anchor="middle" class="m" font-size="18" font-weight="800" fill="#F9A8D4">02</text>
+    <text x="395" y="194" text-anchor="middle" class="s" font-size="16" font-weight="800" letter-spacing="2.5" fill="#fff">GENERATE</text>
+    <text x="395" y="216" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">Gemini → 6 typed cards</text>
+  </g>
+  <g>
+    <circle cx="640" cy="128" r="34" fill="none" stroke="#F59E0B" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" dur="10s" repeatCount="indefinite" values="0;0;.9;0;0" keyTimes="0;0.219;0.260;0.340;1"/>
+      <animate attributeName="r" dur="10s" repeatCount="indefinite" values="34;34;58;70;70" keyTimes="0;0.219;0.260;0.340;1"/>
+    </circle>
+    <circle cx="640" cy="128" r="34" fill="#0B0D1F" stroke="#F59E0B" stroke-opacity=".75" stroke-width="1.5"/>
+    <circle cx="640" cy="128" r="26" fill="#F59E0B" fill-opacity=".14"/>
+    <text x="640" y="135" text-anchor="middle" class="m" font-size="18" font-weight="800" fill="#FCD34D">03</text>
+    <text x="640" y="194" text-anchor="middle" class="s" font-size="16" font-weight="800" letter-spacing="2.5" fill="#fff">SCHEDULE</text>
+    <text x="640" y="216" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">forgot · hard · good · easy</text>
+  </g>
+  <g>
+    <circle cx="885" cy="128" r="34" fill="none" stroke="#2DD4BF" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" dur="10s" repeatCount="indefinite" values="0;0;.9;0;0" keyTimes="0;0.329;0.370;0.450;1"/>
+      <animate attributeName="r" dur="10s" repeatCount="indefinite" values="34;34;58;70;70" keyTimes="0;0.329;0.370;0.450;1"/>
+    </circle>
+    <circle cx="885" cy="128" r="34" fill="#0B0D1F" stroke="#2DD4BF" stroke-opacity=".75" stroke-width="1.5"/>
+    <circle cx="885" cy="128" r="26" fill="#2DD4BF" fill-opacity=".14"/>
+    <text x="885" y="135" text-anchor="middle" class="m" font-size="18" font-weight="800" fill="#5EEAD4">04</text>
+    <text x="885" y="194" text-anchor="middle" class="s" font-size="16" font-weight="800" letter-spacing="2.5" fill="#fff">REVISE</text>
+    <text x="885" y="216" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">today · walk · travel</text>
+  </g>
+  <g>
+    <circle cx="1130" cy="128" r="34" fill="none" stroke="#60A5FA" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" dur="10s" repeatCount="indefinite" values="0;0;.9;0;0" keyTimes="0;0.438;0.479;0.559;1"/>
+      <animate attributeName="r" dur="10s" repeatCount="indefinite" values="34;34;58;70;70" keyTimes="0;0.438;0.479;0.559;1"/>
+    </circle>
+    <circle cx="1130" cy="128" r="34" fill="#0B0D1F" stroke="#60A5FA" stroke-opacity=".75" stroke-width="1.5"/>
+    <circle cx="1130" cy="128" r="26" fill="#60A5FA" fill-opacity=".14"/>
+    <text x="1130" y="135" text-anchor="middle" class="m" font-size="18" font-weight="800" fill="#93C5FD">05</text>
+    <text x="1130" y="194" text-anchor="middle" class="s" font-size="16" font-weight="800" letter-spacing="2.5" fill="#fff">REMIND</text>
+    <text x="1130" y="216" text-anchor="middle" class="m" font-size="12" fill="#A9AED6">daily inbox recall sprint</text>
+  </g>
+  <g>
+    <circle r="16" fill="url(#glow)" opacity=".9"><animateMotion dur="10s" repeatCount="indefinite" rotate="auto"><mpath href="#loop"/></animateMotion></circle>
+    <circle r="4" fill="#fff"><animateMotion dur="10s" repeatCount="indefinite"><mpath href="#loop"/></animateMotion></circle>
+  </g>
+  <rect x=".5" y=".5" width="1279" height="299" rx="20" fill="none" stroke="#A78BFA" stroke-opacity=".25"/>
+</svg>
